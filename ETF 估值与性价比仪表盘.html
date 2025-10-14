@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF估值与性价比仪表盘 (比目鱼视角)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .details-content.open {
+            max-height: 500px; /* Adjust as needed */
+        }
+        .star-rating {
+            font-size: 1.5rem;
+            line-height: 1.75rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">ETF 估值与性价比仪表盘</h1>
+            <p class="text-gray-400">—— 融合E大智慧与比目鱼投资法的实操系统 ——</p>
+        </header>
+
+        <main id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 资产卡片将由JavaScript动态生成 -->
+        </main>
+
+        <footer class="mt-12 p-6 bg-gray-800 rounded-lg text-gray-400">
+            <h2 class="text-xl font-semibold text-white mb-4">评分系统说明 (比目鱼捕猎法则)</h2>
+            <div class="space-y-4">
+                <div class="p-4 bg-gray-700 rounded-md">
+                    <h3 class="font-semibold text-white mb-2">如何维护此系统？</h3>
+                    <p class="text-sm">这是一个静态演示页面。为了使其持续有效，您需要定期（推荐每周）手动更新代码中 `assetsData` 数组的四个核心数据：`pePercentile`, `pbPercentile`, `dividendPercentile`, 和 `drawdown`。您可以从各大行情软件或数据网站（如理杏仁、乌龟量化等）获取这些数据。</p>
+                </div>
+                <ul class="list-disc list-inside space-y-2">
+                    <li><strong>PE估值百分位得分 (3分):</strong> 历史百分位越低越好。≤20%得3分, 20-40%得2分, 40-60%得1分。</li>
+                    <li><strong>PB估值百分位得分 (3分):</strong> 历史百分位越低越好。规则同PE。</li>
+                    <li><strong>股息率百分位得分 (3分):</strong> 历史百分位越高越好。≥80%得3分, 60-80%得2分, 40-60%得1分。</li>
+                    <li><strong>高点回撤幅度得分 (3分):</strong> 回撤越大越好, 体现E大的7080法则精神。≥50%得3分, 30-50%得2分, 10-30%得1分。</li>
+                </ul>
+                <h3 class="text-lg font-semibold text-white pt-4">星级评定标准</h3>
+                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                    <div class="p-2 rounded bg-green-900/50"><strong class="text-green-400">★★★★★ (10-12分):</strong> 五星级猎物</div>
+                    <div class="p-2 rounded bg-emerald-900/50"><strong class="text-emerald-400">★★★★☆ (7-9分):</strong> 四星级猎物</div>
+                    <div class="p-2 rounded bg-yellow-900/50"><strong class="text-yellow-400">★★★☆☆ (4-6分):</strong> 三星级观察</div>
+                    <div class="p-2 rounded bg-orange-900/50"><strong class="text-orange-400">★★☆☆☆ (2-3分):</strong> 二星级警惕</div>
+                    <div class="p-2 rounded bg-red-900/50"><strong class="text-red-400">★☆☆☆☆ (0-1分):</strong> 一星级规避</div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const assetsData = [
+            // --- 港股 ---
+            { 
+                indexName: '恒生医疗保健', indexCode: 'HSHCI',
+                etfs: ['恒生医疗ETF(513060)', '恒生医药ETF(159892)'],
+                pePercentile: 5, pbPercentile: 8, dividendPercentile: 10, drawdown: 0.75, 
+            },
+            { 
+                indexName: '中概互联50', indexCode: 'H11136',
+                etfs: ['中概互联ETF(159605)'],
+                pePercentile: 12, pbPercentile: 15, dividendPercentile: 25, drawdown: 0.70, 
+            },
+            { 
+                indexName: '恒生科技', indexCode: 'HSTECH',
+                etfs: ['恒生科技ETF(513180)'],
+                pePercentile: 15, pbPercentile: 10, dividendPercentile: 30, drawdown: 0.65, 
+            },
+            { 
+                indexName: '恒生指数', indexCode: 'HSI',
+                etfs: ['恒生ETF(159920)'],
+                pePercentile: 22, pbPercentile: 18, dividendPercentile: 85, drawdown: 0.40, 
+            },
+             { 
+                indexName: '中证港股通红利', indexCode: '931215',
+                etfs: ['港股通红利ETF(513530)'],
+                pePercentile: 30, pbPercentile: 25, dividendPercentile: 92, drawdown: 0.28, 
+            },
+            // --- A股 ---
+            { 
+                indexName: '中证医疗', indexCode: '399989',
+                etfs: ['医疗ETF(512170)'],
+                pePercentile: 8, pbPercentile: 11, dividendPercentile: 12, drawdown: 0.68, 
+            },
+             { 
+                indexName: '中证传媒', indexCode: '399971',
+                etfs: ['传媒ETF(512980)'],
+                pePercentile: 18, pbPercentile: 22, dividendPercentile: 65, drawdown: 0.58,
+            },
+            { 
+                indexName: '全指消费', indexCode: '000990',
+                etfs: ['消费ETF(159928)'],
+                pePercentile: 25, pbPercentile: 30, dividendPercentile: 55, drawdown: 0.45,
+            },
+            { 
+                indexName: '食品饮料', indexCode: '000807',
+                etfs: ['食品饮料ETF(515710)'],
+                pePercentile: 28, pbPercentile: 35, dividendPercentile: 60, drawdown: 0.52,
+            },
+            { 
+                indexName: '中证500', indexCode: '000905',
+                etfs: ['中证500ETF(510500)'],
+                pePercentile: 33, pbPercentile: 38, dividendPercentile: 68, drawdown: 0.28,
+            },
+            { 
+                indexName: '中证1000', indexCode: '000852',
+                etfs: ['1000ETF(159629)'],
+                pePercentile: 30, pbPercentile: 42, dividendPercentile: 45, drawdown: 0.32,
+            },
+            { 
+                indexName: '创业板指', indexCode: '399006',
+                etfs: ['创业板ETF(159915)'],
+                pePercentile: 40, pbPercentile: 48, dividendPercentile: 35, drawdown: 0.40,
+            },
+             { 
+                indexName: '科创50', indexCode: '000688',
+                etfs: ['科创50ETF(588000)'],
+                pePercentile: 38, pbPercentile: 46, dividendPercentile: 20, drawdown: 0.48,
+            },
+            { 
+                indexName: '科创100', indexCode: '000698',
+                etfs: ['科创100ETF(588800)'],
+                pePercentile: 42, pbPercentile: 50, dividendPercentile: 22, drawdown: 0.38,
+            },
+             { 
+                indexName: '证券行业', indexCode: '399975',
+                etfs: ['证券ETF(512880)'],
+                pePercentile: 10, pbPercentile: 12, dividendPercentile: 88, drawdown: 0.35,
+            },
+            { 
+                indexName: '沪深300', indexCode: '000300',
+                etfs: ['沪深300ETF(510300)'],
+                pePercentile: 45, pbPercentile: 40, dividendPercentile: 70, drawdown: 0.25,
+            },
+            { 
+                indexName: '中证A500', indexCode: '932035',
+                etfs: ['中证A500ETF(159338)'],
+                pePercentile: 50, pbPercentile: 55, dividendPercentile: 75, drawdown: 0.18,
+            },
+            { 
+                indexName: '全指信息', indexCode: '000993',
+                etfs: ['信息技术ETF(159939)'],
+                pePercentile: 48, pbPercentile: 52, dividendPercentile: 40, drawdown: 0.30,
+            },
+            { 
+                indexName: '中证环保', indexCode: '000827',
+                etfs: ['环保ETF(512580)'],
+                pePercentile: 55, pbPercentile: 60, dividendPercentile: 50, drawdown: 0.15,
+            },
+            { 
+                indexName: '养老产业', indexCode: '399812',
+                etfs: ['养老产业ETF(159842)'],
+                pePercentile: 45, pbPercentile: 40, dividendPercentile: 65, drawdown: 0.22,
+            },
+             { 
+                indexName: '中证红利', indexCode: '000922',
+                etfs: ['红利ETF易方达(515180)'],
+                pePercentile: 85, pbPercentile: 70, dividendPercentile: 95, drawdown: 0.05,
+            },
+            // --- 海外市场 ---
+             { 
+                indexName: '纳斯达克100', indexCode: 'NDX',
+                etfs: ['纳指ETF(513100)'],
+                pePercentile: 95, pbPercentile: 98, dividendPercentile: 10, drawdown: 0.01,
+            },
+            { 
+                indexName: '标普500', indexCode: 'SPX',
+                etfs: ['标普500ETF(513500)'],
+                pePercentile: 92, pbPercentile: 95, dividendPercentile: 15, drawdown: 0.02,
+            },
+            { 
+                indexName: '纳指生物科技', indexCode: 'NBI',
+                etfs: ['纳指生物科技ETF(513290)'],
+                pePercentile: 45, pbPercentile: 35, dividendPercentile: 5, drawdown: 0.33,
+            },
+             { 
+                indexName: '标普医疗保健', indexCode: 'S5HLTH',
+                etfs: ['标普医疗保健LOF(161126)'],
+                pePercentile: 65, pbPercentile: 70, dividendPercentile: 40, drawdown: 0.10,
+            },
+        ];
+
+        // --- 计分和评级逻辑 (无需修改) ---
+        function calculateScoreAndRating(asset) {
+            let score = 0;
+            const breakdown = {};
+            
+            let tempScore = 0;
+            if (asset.pePercentile <= 20) { tempScore = 3; } 
+            else if (asset.pePercentile <= 40) { tempScore = 2; } 
+            else if (asset.pePercentile <= 60) { tempScore = 1; }
+            score += tempScore;
+            breakdown.peScore = tempScore;
+
+            tempScore = 0;
+            if (asset.pbPercentile <= 20) { tempScore = 3; } 
+            else if (asset.pbPercentile <= 40) { tempScore = 2; } 
+            else if (asset.pbPercentile <= 60) { tempScore = 1; }
+            score += tempScore;
+            breakdown.pbScore = tempScore;
+            
+            tempScore = 0;
+            if (asset.dividendPercentile >= 80) { tempScore = 3; } 
+            else if (asset.dividendPercentile >= 60) { tempScore = 2; } 
+            else if (asset.dividendPercentile >= 40) { tempScore = 1; }
+            score += tempScore;
+            breakdown.dividendScore = tempScore;
+
+            tempScore = 0;
+            if (asset.drawdown >= 0.5) { tempScore = 3; } 
+            else if (asset.drawdown >= 0.3) { tempScore = 2; } 
+            else if (asset.drawdown >= 0.1) { tempScore = 1; }
+            score += tempScore;
+            breakdown.drawdownScore = tempScore;
+
+            let rating, colorClasses, stars;
+            if (score >= 10) {
+                rating = '五星级猎物'; stars = '★★★★★'; colorClasses = 'bg-green-800/50 border-green-600 text-green-300';
+            } else if (score >= 7) {
+                rating = '四星级猎物'; stars = '★★★★☆'; colorClasses = 'bg-emerald-800/50 border-emerald-600 text-emerald-300';
+            } else if (score >= 4) {
+                rating = '三星级观察'; stars = '★★★☆☆'; colorClasses = 'bg-yellow-800/50 border-yellow-600 text-yellow-300';
+            } else if (score >= 2) {
+                rating = '二星级警惕'; stars = '★★☆☆☆'; colorClasses = 'bg-orange-800/50 border-orange-600 text-orange-300';
+            } else {
+                rating = '一星级规避'; stars = '★☆☆☆☆'; colorClasses = 'bg-red-800/50 border-red-600 text-red-300';
+            }
+            
+            return { totalScore: score, rating, stars, colorClasses, breakdown };
+        }
+
+        // --- 渲染仪表盘 (无需修改) ---
+        function renderDashboard() {
+            const grid = document.getElementById('dashboard-grid');
+            assetsData.sort((a, b) => calculateScoreAndRating(b).totalScore - calculateScoreAndRating(a).totalScore);
+            
+            grid.innerHTML = ''; 
+            
+            assetsData.forEach((asset, index) => {
+                const { totalScore, rating, stars, colorClasses, breakdown } = calculateScoreAndRating(asset);
+                const cardHTML = `
+                    <div class="asset-card border-2 rounded-lg p-5 ${colorClasses} transition-all duration-300 hover:shadow-lg hover:shadow-gray-800/50 hover:border-gray-500 cursor-pointer" data-index="${index}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-xl font-bold text-white">${asset.indexName} <span class="text-sm font-normal text-gray-400">${asset.indexCode}</span></h2>
+                                <p class="text-xs text-gray-400">${asset.etfs.join(', ')}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-bold text-white">${totalScore} <span class="text-base">分</span></div>
+                                <div class="star-rating ${colorClasses.replace('bg-', 'text-').replace('-800/50', '-400').replace('border-','')}">${stars}</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-center text-sm font-medium rounded-md px-3 py-1 ${colorClasses.replace('border-2', '').replace('/50', '/80')}">${rating}</div>
+                        
+                        <div class="details-content mt-4 pt-4 border-t border-gray-700 text-sm text-gray-300" id="details-${index}">
+                           <div class="grid grid-cols-2 gap-2">
+                                <div>PE百分位: <span class="font-semibold text-white">${asset.pePercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.peScore}</span></div>
+                                
+                                <div>PB百分位: <span class="font-semibold text-white">${asset.pbPercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.pbScore}</span></div>
+
+                                <div>股息率百分位: <span class="font-semibold text-white">${asset.dividendPercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.dividendScore}</span></div>
+
+                                <div>高点回撤: <span class="font-semibold text-white">${(asset.drawdown * 100).toFixed(0)}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.drawdownScore}</span></div>
+                           </div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHTML;
+            });
+            
+            addEventListeners();
+        }
+
+        // --- 事件监听 (无需修改) ---
+        function addEventListeners() {
+            const cards = document.querySelectorAll('.asset-card');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const index = card.dataset.index;
+                    const details = document.getElementById(`details-${index}`);
+                    details.classList.toggle('open');
+                });
+            });
+        }
+
+        // --- 初始化 (无需修改) ---
+        document.addEventListener('DOMContentLoaded', renderDashboard);
+
+    </script>
+</body>
+</html>
+

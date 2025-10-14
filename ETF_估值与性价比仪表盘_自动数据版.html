@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF估值与性价比仪表盘 · 自动数据版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .details-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        .details-content.open { max-height: 500px; }
+        .star-rating { font-size: 1.5rem; line-height: 1.75rem; }
+        .badge { display:inline-block; padding:2px 6px; border-radius:6px; font-size:12px; margin-left:8px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">ETF 估值与性价比仪表盘 <span class="text-sm text-gray-400">自动数据版</span></h1>
+            <p class="text-gray-400">数据来源：本地 <code>assets.csv</code> 或 <code>assets.json</code>（优先 CSV）</p>
+        </header>
+
+        <main id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
+
+        <footer class="mt-12 p-6 bg-gray-800 rounded-lg text-gray-400">
+            <h2 class="text-xl font-semibold text-white mb-4">评分系统说明 (比目鱼捕猎法则)</h2>
+            <div class="space-y-4">
+                <div class="p-4 bg-gray-700 rounded-md">
+                    <h3 class="font-semibold text-white mb-2">如何使用自动数据？</h3>
+                    <ol class="text-sm list-decimal list-inside space-y-1">
+                        <li>把 <code>assets.csv</code>（或 <code>assets.json</code>）放在本页面同一目录；</li>
+                        <li>用 Excel / Google Sheets / 自动脚本定时覆盖该文件；</li>
+                        <li>用本地静态服务器或部署到 GitHub Pages 打开本页（避免 <code>file://</code> 的跨域限制）。</li>
+                    </ol>
+                    <p class="text-xs mt-2">CSV 列：<code>index_name,index_code,etfs,pe_pct,pb_pct,div_yield_pct,drawdown</code>；多只 ETF 用分号分隔。</p>
+                </div>
+                <ul class="list-disc list-inside space-y-2">
+                    <li><strong>PE估值百分位 (3分):</strong> ≤20%得3分, 20-40%得2分, 40-60%得1分。</li>
+                    <li><strong>PB估值百分位 (3分):</strong> 规则同上。</li>
+                    <li><strong>股息率百分位 (3分):</strong> ≥80%得3分, 60-80%得2分, 40-60%得1分。</li>
+                    <li><strong>高点回撤 (3分):</strong> ≥50%得3分, 30-50%得2分, 10-30%得1分。</li>
+                </ul>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ===== 数据加载（优先 CSV，其次 JSON） =====
+        const CSV_URL = 'assets.csv';
+        const JSON_URL = 'assets.json';
+
+        async function loadCSV(url) {
+            const res = await fetch(url + '?ts=' + Date.now());
+            if (!res.ok) throw new Error('CSV not found');
+            const text = await res.text();
+            const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+            if (parsed.errors.length) console.warn('CSV parse warnings:', parsed.errors);
+            return parsed.data.map(r => ({
+                indexName: String(r.index_name || '').trim(),
+                indexCode: String(r.index_code || '').trim(),
+                etfs: String(r.etfs || '').split(';').map(s => s.trim()).filter(Boolean),
+                pePercentile: Number(r.pe_pct),
+                pbPercentile: Number(r.pb_pct),
+                dividendPercentile: Number(r.div_yield_pct),
+                drawdown: Number(r.drawdown)
+            })).filter(x => x.indexName);
+        }
+
+        async function loadJSON(url) {
+            const res = await fetch(url + '?ts=' + Date.now());
+            if (!res.ok) throw new Error('JSON not found');
+            const data = await res.json();
+            return data;
+        }
+
+        async function loadAssetsData() {
+            try { return await loadCSV(CSV_URL); }
+            catch (_) {
+                try { return await loadJSON(JSON_URL); }
+                catch (e) {
+                    console.error('数据文件未找到，使用内置示例。', e);
+                    return [
+                        { indexName: '中证500', indexCode: '000905', etfs: ['中证500ETF(510500)'], pePercentile: 33, pbPercentile: 38, dividendPercentile: 68, drawdown: 0.28 },
+                        { indexName: '中证1000', indexCode: '000852', etfs: ['1000ETF(159629)'], pePercentile: 30, pbPercentile: 42, dividendPercentile: 45, drawdown: 0.32 },
+                        { indexName: '恒生科技', indexCode: 'HSTECH', etfs: ['恒生科技ETF(513180)'], pePercentile: 15, pbPercentile: 10, dividendPercentile: 30, drawdown: 0.65 }
+                    ];
+                }
+            }
+        }
+
+        // ===== 计分逻辑（与原版一致） =====
+        function calculateScoreAndRating(asset) {
+            let score = 0;
+            const breakdown = {};
+            
+            let tempScore = 0;
+            if (asset.pePercentile <= 20) { tempScore = 3; } 
+            else if (asset.pePercentile <= 40) { tempScore = 2; } 
+            else if (asset.pePercentile <= 60) { tempScore = 1; }
+            score += tempScore; breakdown.peScore = tempScore;
+
+            tempScore = 0;
+            if (asset.pbPercentile <= 20) { tempScore = 3; } 
+            else if (asset.pbPercentile <= 40) { tempScore = 2; } 
+            else if (asset.pbPercentile <= 60) { tempScore = 1; }
+            score += tempScore; breakdown.pbScore = tempScore;
+            
+            tempScore = 0;
+            if (asset.dividendPercentile >= 80) { tempScore = 3; } 
+            else if (asset.dividendPercentile >= 60) { tempScore = 2; } 
+            else if (asset.dividendPercentile >= 40) { tempScore = 1; }
+            score += tempScore; breakdown.dividendScore = tempScore;
+
+            tempScore = 0;
+            if (asset.drawdown >= 0.5) { tempScore = 3; } 
+            else if (asset.drawdown >= 0.3) { tempScore = 2; } 
+            else if (asset.drawdown >= 0.1) { tempScore = 1; }
+            score += tempScore; breakdown.drawdownScore = tempScore;
+
+            let rating, colorClasses, stars;
+            if (score >= 10) { rating = '五星级猎物'; stars = '★★★★★'; colorClasses = 'bg-green-800/50 border-green-600 text-green-300'; }
+            else if (score >= 7) { rating = '四星级猎物'; stars = '★★★★☆'; colorClasses = 'bg-emerald-800/50 border-emerald-600 text-emerald-300'; }
+            else if (score >= 4) { rating = '三星级观察'; stars = '★★★☆☆'; colorClasses = 'bg-yellow-800/50 border-yellow-600 text-yellow-300'; }
+            else if (score >= 2) { rating = '二星级警惕'; stars = '★★☆☆☆'; colorClasses = 'bg-orange-800/50 border-orange-600 text-orange-300'; }
+            else { rating = '一星级规避'; stars = '★☆☆☆☆'; colorClasses = 'bg-red-800/50 border-red-600 text-red-300'; }
+            
+            return { totalScore: score, rating, stars, colorClasses, breakdown };
+        }
+
+        function renderDashboard(assetsData) {
+            const grid = document.getElementById('dashboard-grid');
+            assetsData.sort((a, b) => calculateScoreAndRating(b).totalScore - calculateScoreAndRating(a).totalScore);
+            grid.innerHTML = ''; 
+            
+            assetsData.forEach((asset, index) => {
+                const { totalScore, rating, stars, colorClasses, breakdown } = calculateScoreAndRating(asset);
+                const cardHTML = `
+                    <div class="asset-card border-2 rounded-lg p-5 ${colorClasses} transition-all duration-300 hover:shadow-lg hover:shadow-gray-800/50 hover:border-gray-500 cursor-pointer" data-index="${index}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-xl font-bold text-white">${asset.indexName} <span class="text-sm font-normal text-gray-400">${asset.indexCode}</span></h2>
+                                <p class="text-xs text-gray-400">${asset.etfs.join(', ')}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-bold text-white">${totalScore} <span class="text-base">分</span></div>
+                                <div class="star-rating">${stars}</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-center text-sm font-medium rounded-md px-3 py-1 ${colorClasses.replace('bg-', 'bg-').replace('/50', '/80')}">${rating}</div>
+                        <div class="details-content mt-4 pt-4 border-t border-gray-700 text-sm text-gray-300" id="details-${index}">
+                           <div class="grid grid-cols-2 gap-2">
+                                <div>PE百分位: <span class="font-semibold text-white">${asset.pePercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.peScore}</span></div>
+                                <div>PB百分位: <span class="font-semibold text-white">${asset.pbPercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.pbScore}</span></div>
+                                <div>股息率百分位: <span class="font-semibold text-white">${asset.dividendPercentile}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.dividendScore}</span></div>
+                                <div>高点回撤: <span class="font-semibold text-white">${(asset.drawdown * 100).toFixed(0)}%</span></div>
+                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.drawdownScore}</span></div>
+                           </div>
+                        </div>
+                    </div>`;
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            });
+
+            document.querySelectorAll('.asset-card').forEach((card, i) => {
+                card.addEventListener('click', () => {
+                    const details = document.getElementById(`details-${i}`);
+                    details.classList.toggle('open');
+                });
+            });
+        }
+
+        (async function () {
+            const data = await loadAssetsData();
+            renderDashboard(data);
+        })();
+    </script>
+</body>
+</html>
