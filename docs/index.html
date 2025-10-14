@@ -9,35 +9,70 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .details-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
-        .details-content.open { max-height: 520px; }
-        .star-rating { font-size: 1.4rem; line-height: 1.6rem; }
-        .badge { display:inline-block; padding:2px 6px; border-radius:6px; font-size:12px; margin-left:8px; }
+        .sticky-head { position: sticky; top: 0; backdrop-filter: blur(8px); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body class="bg-slate-950 text-slate-100">
 
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">ETF 估值与性价比仪表盘 <span class="text-sm text-gray-400">djeva 数据驱动</span></h1>
-            <p class="text-gray-400">数据来源：<code>docs/assets.csv</code>（自动构建）或 <code>assets.json</code> 备用</p>
+    <div class="max-w-6xl mx-auto px-4 py-6 md:py-10 space-y-8">
+        <header class="space-y-2 text-center md:text-left">
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">ETF 估值与性价比仪表盘 <span class="text-sm text-slate-400 align-super">djeva 数据驱动</span></h1>
+            <p class="text-sm md:text-base text-slate-400">数据来源：蛋卷基金指数估值 API + 本地价格历史，评分遵循 Value / Pain 双维度。</p>
         </header>
 
-        <main id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
+        <section class="grid gap-4 md:grid-cols-2">
+            <article class="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/40">
+                <h2 class="text-xs uppercase tracking-widest text-slate-400">数据摘要</h2>
+                <p class="mt-3 text-lg font-medium text-slate-200">djeva 官方估值 + AkShare / Yahoo 行情</p>
+                <div class="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+                    <span>最近更新：<span id="last-updated" class="text-slate-100 font-semibold"></span></span>
+                    <span>覆盖指数：<span id="total-assets" class="text-slate-100 font-semibold"></span></span>
+                </div>
+            </article>
+            <article class="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/40">
+                <h2 class="text-xs uppercase tracking-widest text-slate-400">评分逻辑（总分 20）</h2>
+                <ul class="mt-3 space-y-2 text-sm text-slate-300">
+                    <li><strong class="text-slate-100">Value</strong>（0-12）：直接取官方 PE / PB 百分位较高者，百分位越低得分越高。</li>
+                    <li><strong class="text-slate-100">Pain</strong>（0-8）：10 年窗口最大回撤，跌得越痛越高分。</li>
+                </ul>
+                <p class="mt-3 text-xs text-slate-500">股息率与 ROE 当前仅作展示参考，暂不计入得分。</p>
+            </article>
+        </section>
 
-        <footer class="mt-12 p-6 bg-gray-800 rounded-lg text-gray-300 space-y-4">
+        <section class="space-y-4">
+            <div class="hidden lg:block">
+                <div class="overflow-hidden rounded-xl border border-slate-800/80 shadow-2xl shadow-black/40">
+                    <table class="min-w-full text-sm">
+                        <thead class="sticky-head bg-slate-950/90 border-b border-slate-800/70">
+                            <tr class="text-xs uppercase tracking-widest text-slate-400">
+                                <th scope="col" class="px-4 py-3 text-left">指数</th>
+                                <th scope="col" class="px-4 py-3 text-center">代码</th>
+                                <th scope="col" class="px-4 py-3 text-right">PE</th>
+                                <th scope="col" class="px-4 py-3 text-right">PE百分位</th>
+                                <th scope="col" class="px-4 py-3 text-right">PB</th>
+                                <th scope="col" class="px-4 py-3 text-right">PB百分位</th>
+                                <th scope="col" class="px-4 py-3 text-right">股息率</th>
+                                <th scope="col" class="px-4 py-3 text-right">ROE</th>
+                                <th scope="col" class="px-4 py-3 text-right">回撤</th>
+                                <th scope="col" class="px-4 py-3 text-right">评分</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-view" class="bg-slate-900/40 divide-y divide-slate-800/60"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="lg:hidden space-y-4" id="card-view"></div>
+        </section>
+
+        <footer class="mt-10 border border-slate-800/70 bg-slate-900/70 rounded-xl p-5 text-sm text-slate-400 space-y-3">
             <div>
-                <h2 class="text-xl font-semibold text-white mb-2">数据字段</h2>
-                <p class="text-sm text-gray-400">CSV 列：<code>index_name,index_code,etfs,pe,pe_pct,pb,pb_pct,dividend,dividend_pct,roe,roe_pct,drawdown,eva_type</code></p>
-                <p class="text-xs text-gray-500">百分位取过去十年窗口（若历史不足则使用全量），股息率/ROE 以 djeva TTM 数据为准，回撤基于本地价格序列。</p>
+                <h3 class="text-slate-200 font-semibold mb-2">字段说明</h3>
+                <p class="text-xs">CSV 列需包含：<code>index_name,index_code,etfs,pe,pe_pct,pb,pb_pct,dividend,roe,drawdown,eva_type</code>。百分位由 djeva API 提供，回撤基于本地价格序列。</p>
             </div>
             <div>
-                <h2 class="text-xl font-semibold text-white mb-2">评分体系（总分 20）</h2>
-                <ul class="list-disc list-inside space-y-1 text-sm">
-                    <li><strong>价值 Value（0-12）</strong>：直接使用蛋卷提供的 PE / PB 百分位，取最大者；<code>value = clamp(round((100 - pct) / 8), 0, 12)</code></li>
-                    <li><strong>疼痛 Pain（0-8）</strong>：回撤越深越好；<code>pain = clamp(round(drawdown * 16), 0, 8)</code></li>
-                </ul>
-                <p class="text-xs text-gray-500">股息率与 ROE 目前仅展示当前值，用于人工判断，不纳入自动评分。</p>
+                <h3 class="text-slate-200 font-semibold mb-2">调试提示</h3>
+                <p class="text-xs">如需离线预览，请确保通过本地静态服务器访问，避免 <code>file://</code> 跨域限制。</p>
             </div>
         </footer>
     </div>
@@ -58,12 +93,18 @@
         const makeStars = (count) => '★'.repeat(count) + '☆'.repeat(5 - count);
 
         const ratingBuckets = [
-            { min: 17, label: '猎杀区', classes: 'bg-green-900/40 border-green-500/70', stars: 5 },
-            { min: 14, label: '稳中求胜', classes: 'bg-lime-900/30 border-lime-500/60', stars: 4 },
-            { min: 10, label: '中性观察', classes: 'bg-slate-800/40 border-slate-500/50', stars: 3 },
-            { min: 6,  label: '高位警戒', classes: 'bg-amber-900/30 border-amber-500/60', stars: 2 },
-            { min: 0,  label: '泡沫区', classes: 'bg-red-900/30 border-red-500/60', stars: 1 },
+            { min: 18, label: '猎杀区', pillClass: 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/40', stars: 5 },
+            { min: 14, label: '稳中求胜', pillClass: 'bg-lime-500/15 text-lime-200 ring-1 ring-lime-400/40', stars: 4 },
+            { min: 10, label: '中性观察', pillClass: 'bg-slate-500/15 text-slate-200 ring-1 ring-slate-400/30', stars: 3 },
+            { min: 6,  label: '高位警戒', pillClass: 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/35', stars: 2 },
+            { min: 0,  label: '泡沫区', pillClass: 'bg-red-500/15 text-red-200 ring-1 ring-red-400/35', stars: 1 },
         ];
+
+        const EVA_BADGES = {
+            low: { text: '低估', cls: 'bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-400/40' },
+            mid: { text: '中性', cls: 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-400/35' },
+            high: { text: '高估', cls: 'bg-red-400/15 text-red-200 ring-1 ring-red-400/35' },
+        };
 
         async function loadCSV(url) {
             const res = await fetch(url + '?ts=' + Date.now());
@@ -125,69 +166,129 @@
 
             return {
                 total,
-                ratingLabel: rating.label,
-                ratingClasses: rating.classes,
-                stars: makeStars(rating.stars),
+                rating,
                 breakdown: { valueScore, painScore },
             };
         }
 
-        function createDetailRow(label, value, extra) {
-            return `
-                <div class="flex flex-col gap-1 p-3 bg-gray-800/60 rounded-md">
-                    <span class="text-xs uppercase tracking-wide text-gray-400">${label}</span>
-                    <span class="text-lg font-semibold text-white">${value}</span>
-                    <span class="text-xs text-gray-500">${extra}</span>
-                </div>`;
+        function percentileCell(value) {
+            if (!Number.isFinite(value)) return '<span class="text-slate-500">--</span>';
+            const pct = clamp(value, 0, 100);
+            const gradient = `background: linear-gradient(90deg, rgba(56,189,248,0.22) 0%, rgba(249,115,22,0.35) ${pct}%, rgba(15,23,42,0) ${pct}%);`;
+            return `<span class="block px-2 py-1 text-sm font-semibold text-sky-100 rounded-md" style="${gradient}">${pct.toFixed(1)}%</span>`;
         }
 
-        function renderDashboard(assets) {
-            const grid = document.getElementById('dashboard-grid');
-            assets.sort((a, b) => calculateScore(b).total - calculateScore(a).total);
-            grid.innerHTML = '';
+        function drawdownCell(value) {
+            if (!Number.isFinite(value)) return '<span class="text-slate-500">--</span>';
+            const pct = clamp(value * 100, 0, 100);
+            const gradient = `background: linear-gradient(90deg, rgba(16,185,129,0.22) 0%, rgba(8,145,178,0.28) ${pct}%, rgba(15,23,42,0) ${pct}%);`;
+            return `<span class="block px-2 py-1 text-sm font-semibold text-teal-100 rounded-md" style="${gradient}">${pct.toFixed(1)}%</span>`;
+        }
 
+        function ratingPill(score) {
+            return `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${score.rating.pillClass}"><span>${score.total}</span><span class="text-xs font-medium">${score.rating.label}</span></span>`;
+        }
+
+        function renderTable(assets) {
+            const tbody = document.getElementById('table-view');
+            tbody.innerHTML = assets.map(asset => {
+                const score = calculateScore(asset);
+                const evaKey = (asset.evaType || '').toLowerCase();
+                const badge = EVA_BADGES[evaKey] || EVA_BADGES.mid;
+                const etfText = asset.etfs.join(', ');
+                return `
+                    <tr class="group transition hover:bg-slate-900/70">
+                        <td class="px-4 py-4 align-middle">
+                            <div class="flex flex-col gap-2" title="${etfText || '无 ETF 对应'}">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <span class="text-base font-semibold text-white group-hover:text-sky-200 transition">${asset.indexName}</span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md ${badge.cls}">${badge.text}</span>
+                                </div>
+                                <div class="text-xs text-slate-500 flex items-center gap-2">
+                                    <span class="uppercase tracking-wide text-slate-400">ETF:</span>
+                                    <span class="truncate max-w-[360px]">${etfText || '—'}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-center text-sm text-slate-300">${asset.indexCode || '--'}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-200">${formatNumber(asset.pe, 2)}</td>
+                        <td class="px-4 py-4 text-right">${percentileCell(asset.pePercentile)}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-200">${formatNumber(asset.pb, 2)}</td>
+                        <td class="px-4 py-4 text-right">${percentileCell(asset.pbPercentile)}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-200">${formatPercent(asset.dividendYield, 2)}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-200">${formatPercent(asset.roe, 2)}</td>
+                        <td class="px-4 py-4 text-right">${drawdownCell(asset.drawdown)}</td>
+                        <td class="px-4 py-4 text-right">${ratingPill(score)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderCards(assets) {
+            const container = document.getElementById('card-view');
+            container.innerHTML = '';
             assets.forEach((asset, index) => {
                 const score = calculateScore(asset);
-                const details = [
-                    createDetailRow('PE', formatNumber(asset.pe), `百分位 ${formatPercentile(asset.pePercentile)}`),
-                    createDetailRow('PB', formatNumber(asset.pb), `百分位 ${formatPercentile(asset.pbPercentile)}`),
-                    createDetailRow('股息率', formatPercent(asset.dividendYield), '来自 djeva TTM'),
-                    createDetailRow('ROE', formatPercent(asset.roe, 1), '来自 djeva TTM'),
-                    createDetailRow('回撤', formatPercent(asset.drawdown), `Pain 得分 ${score.breakdown.painScore}`),
-                    createDetailRow('价值得分', score.breakdown.valueScore, 'Value (0-12)'),
-                ].join('');
-
-                const cardHTML = `
-                    <div class="asset-card border-2 rounded-lg p-5 ${score.ratingClasses} transition-all duration-300 hover:shadow-lg hover:shadow-gray-800/50 hover:border-gray-500 cursor-pointer" data-index="${index}">
-                        <div class="flex justify-between items-start gap-4">
+                const evaKey = (asset.evaType || '').toLowerCase();
+                const badge = EVA_BADGES[evaKey] || EVA_BADGES.mid;
+                const stars = ratingBuckets.indexOf(score.rating) >= 0 ? makeStars(score.rating.stars) : makeStars(3);
+                const card = `
+                    <article class="rounded-xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg shadow-black/40" data-index="${index}">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <h2 class="text-xl font-bold text-white">${asset.indexName} <span class="text-sm font-normal text-gray-400">${asset.indexCode}</span></h2>
-                                <p class="text-xs text-gray-400">${asset.etfs.join(', ') || '—'}</p>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-lg font-semibold text-white">${asset.indexName}</h2>
+                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md ${badge.cls}">${badge.text}</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">${asset.indexCode} · ${asset.etfs.join(', ') || '—'}</p>
                             </div>
                             <div class="text-right">
-                                <div class="text-3xl font-bold text-white">${score.total} <span class="text-base">分</span></div>
-                                <div class="star-rating">${score.stars}</div>
+                                <div class="text-3xl font-bold text-white">${score.total}</div>
+                                <div class="text-xs text-slate-400">${score.rating.label}</div>
+                                <div class="text-sm text-amber-400">${stars}</div>
                             </div>
                         </div>
-                        <div class="mt-4 text-center text-sm font-medium rounded-md px-3 py-1 bg-white/10 text-white">${score.ratingLabel}</div>
-                        <div class="details-content mt-4 pt-4 border-t border-gray-700" id="details-${index}">
-                            <div class="grid grid-cols-2 gap-3">${details}</div>
-                        </div>
-                    </div>`;
-                grid.insertAdjacentHTML('beforeend', cardHTML);
-            });
-
-            document.querySelectorAll('.asset-card').forEach((card, i) => {
-                card.addEventListener('click', () => {
-                    const details = document.getElementById(`details-${i}`);
-                    details.classList.toggle('open');
-                });
+                        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">PE / 百分位</dt>
+                                <dd class="font-semibold text-slate-100">${formatNumber(asset.pe, 2)} · ${formatPercentile(asset.pePercentile)}</dd>
+                            </div>
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">PB / 百分位</dt>
+                                <dd class="font-semibold text-slate-100">${formatNumber(asset.pb, 2)} · ${formatPercentile(asset.pbPercentile)}</dd>
+                            </div>
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">股息率</dt>
+                                <dd class="font-semibold text-teal-100">${formatPercent(asset.dividendYield, 2)}</dd>
+                            </div>
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">ROE</dt>
+                                <dd class="font-semibold text-sky-100">${formatPercent(asset.roe, 2)}</dd>
+                            </div>
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">回撤</dt>
+                                <dd class="font-semibold text-emerald-200">${formatPercent(asset.drawdown, 1)}</dd>
+                            </div>
+                            <div class="space-y-1">
+                                <dt class="text-xs text-slate-500">Value / Pain</dt>
+                                <dd class="font-semibold text-slate-100">${score.breakdown.valueScore} / ${score.breakdown.painScore}</dd>
+                            </div>
+                        </dl>
+                    </article>
+                `;
+                container.insertAdjacentHTML('beforeend', card);
             });
         }
 
         (async function () {
             const data = await loadAssetsData();
-            renderDashboard(data);
+            const sorted = [...data].sort((a, b) => calculateScore(b).total - calculateScore(a).total);
+
+            document.getElementById('last-updated').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+            document.getElementById('total-assets').textContent = sorted.length;
+
+            renderTable(sorted);
+            renderCards(sorted);
         })();
     </script>
 </body>
