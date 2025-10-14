@@ -1,11 +1,275 @@
-# TODO: populate with index configuration entries.
-# Example:
-# - name: 中证500
-#   code: "000905"
-#   class: "CN_CSI"
-#   price_symbol: "csi:000905"
-#   pe_source: "csindex"
-#   dp_source: "csindex"
-#   pb_source: "auto"
-#   etf_proxies:
-#     - "510500.SS"
+# 指数配置表
+# - class 可选：CN_CSI / HK_HSI / US_INDEX
+# - pe_source / pb_source / dp_source：
+#     * csindex       → AKShare 中证估值接口
+#     * hsi_factsheet → 恒生官网月度 PDF
+#     * etf_dividend  → 通过 ETF 分红计算股息率
+#     * none          → 暂无数据（后续脚本需降权处理）
+
+# --- 港股及中概指数 ---
+- name: 恒生医疗保健
+  code: "HSHCI"
+  class: "HK_HSI"
+  price_symbol: "513060.SS"
+  pe_source: "hsi_factsheet"
+  pb_source: "hsi_factsheet"
+  dp_source: "hsi_factsheet"
+  factsheet_url: "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/factsheets/hshci.pdf"
+  etf_proxies:
+    - "513060.SS"
+
+- name: 中概互联50
+  code: "H11136"
+  class: "HK_HSI"
+  price_symbol: "513050.SS"
+  pe_source: "hsi_factsheet"
+  pb_source: "hsi_factsheet"
+  dp_source: "hsi_factsheet"
+  factsheet_url: "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/factsheets/h11136.pdf"
+  etf_proxies:
+    - "513050.SS"
+    - "159605.SZ"
+    - "KWEB"
+
+- name: 恒生科技
+  code: "HSTECH"
+  class: "HK_HSI"
+  price_symbol: "3032.HK"
+  pe_source: "hsi_factsheet"
+  pb_source: "hsi_factsheet"
+  dp_source: "hsi_factsheet"
+  factsheet_url: "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/factsheets/hstech.pdf"
+  etf_proxies:
+    - "3032.HK"
+    - "3067.HK"
+    - "513180.SS"
+
+- name: 恒生指数
+  code: "HSI"
+  class: "HK_HSI"
+  price_symbol: "^HSI"
+  pe_source: "hsi_factsheet"
+  pb_source: "hsi_factsheet"
+  dp_source: "hsi_factsheet"
+  factsheet_url: "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/factsheets/hsi.pdf"
+  etf_proxies:
+    - "2800.HK"
+    - "159920.SZ"
+
+- name: 中证港股通红利
+  code: "931215"
+  class: "CN_CSI"
+  price_symbol: "513530.SS"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "513530.SS"
+
+# --- A 股指数 ---
+- name: 中证医疗
+  code: "399989"
+  class: "CN_CSI"
+  price_symbol: "sz399989"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "512170.SS"
+
+- name: 中证传媒
+  code: "399971"
+  class: "CN_CSI"
+  price_symbol: "sz399971"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "512980.SS"
+
+- name: 全指消费
+  code: "000990"
+  class: "CN_CSI"
+  price_symbol: "sh000990"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159928.SZ"
+
+- name: 食品饮料
+  code: "000807"
+  class: "CN_CSI"
+  price_symbol: "sh000807"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "515710.SS"
+
+- name: 中证500
+  code: "000905"
+  class: "CN_CSI"
+  price_symbol: "csi:000905"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "510500.SS"
+    - "159922.SZ"
+
+- name: 中证1000
+  code: "000852"
+  class: "CN_CSI"
+  price_symbol: "csi:000852"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159629.SZ"
+
+- name: 创业板指
+  code: "399006"
+  class: "CN_CSI"
+  price_symbol: "sz399006"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159915.SZ"
+
+- name: 科创50
+  code: "000688"
+  class: "CN_CSI"
+  price_symbol: "sh000688"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "588000.SS"
+
+- name: 科创100
+  code: "000698"
+  class: "CN_CSI"
+  price_symbol: "sh000698"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "588800.SS"
+
+- name: 证券行业
+  code: "399975"
+  class: "CN_CSI"
+  price_symbol: "sz399975"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "512880.SS"
+
+- name: 沪深300
+  code: "000300"
+  class: "CN_CSI"
+  price_symbol: "sh000300"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "510300.SS"
+    - "159919.SZ"
+
+- name: 中证A500
+  code: "932035"
+  class: "CN_CSI"
+  price_symbol: "csi:932035"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159338.SZ"
+
+- name: 全指信息
+  code: "000993"
+  class: "CN_CSI"
+  price_symbol: "sh000993"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159939.SZ"
+
+- name: 中证环保
+  code: "000827"
+  class: "CN_CSI"
+  price_symbol: "sh000827"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "512580.SS"
+
+- name: 养老产业
+  code: "399812"
+  class: "CN_CSI"
+  price_symbol: "sz399812"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "159842.SZ"
+
+- name: 中证红利
+  code: "000922"
+  class: "CN_CSI"
+  price_symbol: "sh000922"
+  pe_source: "csindex"
+  pb_source: "auto"
+  dp_source: "csindex"
+  etf_proxies:
+    - "515180.SS"
+
+# --- 海外指数 ---
+- name: 纳斯达克100
+  code: "NDX"
+  class: "US_INDEX"
+  price_symbol: "^NDX"
+  pe_source: "none"
+  pb_source: "none"
+  dp_source: "etf_dividend"
+  etf_proxies:
+    - "QQQ"
+    - "513100.SS"
+
+- name: 标普500
+  code: "SPX"
+  class: "US_INDEX"
+  price_symbol: "^GSPC"
+  pe_source: "none"
+  pb_source: "none"
+  dp_source: "etf_dividend"
+  etf_proxies:
+    - "SPY"
+    - "513500.SS"
+
+- name: 纳指生物科技
+  code: "NBI"
+  class: "US_INDEX"
+  price_symbol: "^NBI"
+  pe_source: "none"
+  pb_source: "none"
+  dp_source: "etf_dividend"
+  etf_proxies:
+    - "IBB"
+    - "513290.SS"
+
+- name: 标普医疗保健
+  code: "S5HLTH"
+  class: "US_INDEX"
+  price_symbol: "^SPXHC"
+  pe_source: "none"
+  pb_source: "none"
+  dp_source: "etf_dividend"
+  etf_proxies:
+    - "XLV"
+    - "161126.SZ"
