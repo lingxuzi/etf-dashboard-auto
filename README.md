@@ -37,6 +37,13 @@
 
 > **注意**：抓数脚本依赖外部数据源，需要可访问互联网的环境。
 
+## 数据抓取注意事项
+
+- 中证指数估值接口依赖 `www.csindex.com.cn` / `oss-ch.csindex.com.cn`，部分网络环境会直接返回 403；如遇到该问题，请切换出口或暂时将对应指数的 `pe_source/pb_source/dp_source` 设为 `none`，让评分逻辑自动降权。
+- 指标文件可能以 HTML / 旧式 Excel 等格式返回，脚本会尝试多种解析方式；仍失败时请在 `data/raw/cn_csi/` 查看 `*_valuation_missing.log`，确认文件内容后可在 `config/indices.yaml` 补充 `indicator_symbol` 或自行维护估值数据。
+- 恒指 factsheet 路径调整频繁，可在配置中把 `factsheet_url` 改为列表，脚本会依次尝试；继续 404 时请到恒指官网查找最新链接并补充进去。
+- 美股指数已默认在 `etf_proxies` 中包含 ETF 兜底符号（如 XLV），若主指数代码再次失效，可继续添加备用 ETF。
+
 ## 自动化部署
 
 - GitHub Pages：在仓库 Settings → Pages 选择 `main` 分支 `/docs` 目录即可对外发布。

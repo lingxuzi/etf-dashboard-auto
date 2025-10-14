@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ETF估值与性价比仪表盘 · 自动数据版</title>
+    <title>ETF估值与性价比仪表盘 · djeva版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .details-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
-        .details-content.open { max-height: 500px; }
-        .star-rating { font-size: 1.5rem; line-height: 1.75rem; }
+        .details-content.open { max-height: 520px; }
+        .star-rating { font-size: 1.4rem; line-height: 1.6rem; }
         .badge { display:inline-block; padding:2px 6px; border-radius:6px; font-size:12px; margin-left:8px; }
     </style>
 </head>
@@ -19,38 +19,51 @@
 
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">ETF 估值与性价比仪表盘 <span class="text-sm text-gray-400">自动数据版</span></h1>
-            <p class="text-gray-400">数据来源：本地 <code>assets.csv</code> 或 <code>assets.json</code>（优先 CSV）</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">ETF 估值与性价比仪表盘 <span class="text-sm text-gray-400">djeva 数据驱动</span></h1>
+            <p class="text-gray-400">数据来源：<code>docs/assets.csv</code>（自动构建）或 <code>assets.json</code> 备用</p>
         </header>
 
         <main id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
 
-        <footer class="mt-12 p-6 bg-gray-800 rounded-lg text-gray-400">
-            <h2 class="text-xl font-semibold text-white mb-4">评分系统说明 (比目鱼捕猎法则)</h2>
-            <div class="space-y-4">
-                <div class="p-4 bg-gray-700 rounded-md">
-                    <h3 class="font-semibold text-white mb-2">如何使用自动数据？</h3>
-                    <ol class="text-sm list-decimal list-inside space-y-1">
-                        <li>把 <code>assets.csv</code>（或 <code>assets.json</code>）放在本页面同一目录；</li>
-                        <li>用 Excel / Google Sheets / 自动脚本定时覆盖该文件；</li>
-                        <li>用本地静态服务器或部署到 GitHub Pages 打开本页（避免 <code>file://</code> 的跨域限制）。</li>
-                    </ol>
-                    <p class="text-xs mt-2">CSV 列：<code>index_name,index_code,etfs,pe_pct,pb_pct,div_yield_pct,drawdown</code>；多只 ETF 用分号分隔。</p>
-                </div>
-                <ul class="list-disc list-inside space-y-2">
-                    <li><strong>PE估值百分位 (3分):</strong> ≤20%得3分, 20-40%得2分, 40-60%得1分。</li>
-                    <li><strong>PB估值百分位 (3分):</strong> 规则同上。</li>
-                    <li><strong>股息率百分位 (3分):</strong> ≥80%得3分, 60-80%得2分, 40-60%得1分。</li>
-                    <li><strong>高点回撤 (3分):</strong> ≥50%得3分, 30-50%得2分, 10-30%得1分。</li>
+        <footer class="mt-12 p-6 bg-gray-800 rounded-lg text-gray-300 space-y-4">
+            <div>
+                <h2 class="text-xl font-semibold text-white mb-2">数据字段</h2>
+                <p class="text-sm text-gray-400">CSV 列：<code>index_name,index_code,etfs,pe,pe_pct,pb,pb_pct,dividend,dividend_pct,roe,roe_pct,drawdown,eva_type</code></p>
+                <p class="text-xs text-gray-500">百分位取过去十年窗口（若历史不足则使用全量），股息率/ROE 以 djeva TTM 数据为准，回撤基于本地价格序列。</p>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-white mb-2">评分体系（总分 20）</h2>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>价值 Value（0-12）</strong>：直接使用蛋卷提供的 PE / PB 百分位，取最大者；<code>value = clamp(round((100 - pct) / 8), 0, 12)</code></li>
+                    <li><strong>疼痛 Pain（0-8）</strong>：回撤越深越好；<code>pain = clamp(round(drawdown * 16), 0, 8)</code></li>
                 </ul>
+                <p class="text-xs text-gray-500">股息率与 ROE 目前仅展示当前值，用于人工判断，不纳入自动评分。</p>
             </div>
         </footer>
     </div>
 
     <script>
-        // ===== 数据加载（优先 CSV，其次 JSON） =====
         const CSV_URL = 'assets.csv';
         const JSON_URL = 'assets.json';
+
+        const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+        const toNumber = (value) => {
+            if (value === null || value === undefined || value === '') return null;
+            const num = Number(value);
+            return Number.isFinite(num) ? num : null;
+        };
+        const formatNumber = (value, digits = 2) => value === null || value === undefined ? '--' : Number(value).toFixed(digits);
+        const formatPercent = (value, digits = 1) => value === null || value === undefined ? '--' : (Number(value) * 100).toFixed(digits) + '%';
+        const formatPercentile = (value, digits = 1) => value === null || value === undefined ? '--' : Number(value).toFixed(digits) + '%';
+        const makeStars = (count) => '★'.repeat(count) + '☆'.repeat(5 - count);
+
+        const ratingBuckets = [
+            { min: 17, label: '猎杀区', classes: 'bg-green-900/40 border-green-500/70', stars: 5 },
+            { min: 14, label: '稳中求胜', classes: 'bg-lime-900/30 border-lime-500/60', stars: 4 },
+            { min: 10, label: '中性观察', classes: 'bg-slate-800/40 border-slate-500/50', stars: 3 },
+            { min: 6,  label: '高位警戒', classes: 'bg-amber-900/30 border-amber-500/60', stars: 2 },
+            { min: 0,  label: '泡沫区', classes: 'bg-red-900/30 border-red-500/60', stars: 1 },
+        ];
 
         async function loadCSV(url) {
             const res = await fetch(url + '?ts=' + Date.now());
@@ -62,18 +75,21 @@
                 indexName: String(r.index_name || '').trim(),
                 indexCode: String(r.index_code || '').trim(),
                 etfs: String(r.etfs || '').split(';').map(s => s.trim()).filter(Boolean),
-                pePercentile: Number(r.pe_pct),
-                pbPercentile: Number(r.pb_pct),
-                dividendPercentile: Number(r.div_yield_pct),
-                drawdown: Number(r.drawdown)
+                pe: toNumber(r.pe),
+                pePercentile: toNumber(r.pe_pct),
+                pb: toNumber(r.pb),
+                pbPercentile: toNumber(r.pb_pct),
+                dividendYield: toNumber(r.dividend),
+                roe: toNumber(r.roe),
+                drawdown: toNumber(r.drawdown),
+                evaType: String(r.eva_type || '').trim(),
             })).filter(x => x.indexName);
         }
 
         async function loadJSON(url) {
             const res = await fetch(url + '?ts=' + Date.now());
             if (!res.ok) throw new Error('JSON not found');
-            const data = await res.json();
-            return data;
+            return await res.json();
         }
 
         async function loadAssetsData() {
@@ -83,84 +99,79 @@
                 catch (e) {
                     console.error('数据文件未找到，使用内置示例。', e);
                     return [
-                        { indexName: '中证500', indexCode: '000905', etfs: ['中证500ETF(510500)'], pePercentile: 33, pbPercentile: 38, dividendPercentile: 68, drawdown: 0.28 },
-                        { indexName: '中证1000', indexCode: '000852', etfs: ['1000ETF(159629)'], pePercentile: 30, pbPercentile: 42, dividendPercentile: 45, drawdown: 0.32 },
-                        { indexName: '恒生科技', indexCode: 'HSTECH', etfs: ['恒生科技ETF(513180)'], pePercentile: 15, pbPercentile: 10, dividendPercentile: 30, drawdown: 0.65 }
+                        {
+                            indexName: '中证500', indexCode: 'SH000905', etfs: ['510500.SS'],
+                            pe: 35.05, pePercentile: 82.0, pb: 2.33, pbPercentile: 73.0,
+                            dividendYield: 0.0135,
+                            roe: 0.066,
+                            drawdown: 0.32, evaType: 'high'
+                        }
                     ];
                 }
             }
         }
 
-        // ===== 计分逻辑（与原版一致） =====
-        function calculateScoreAndRating(asset) {
-            let score = 0;
-            const breakdown = {};
-            
-            let tempScore = 0;
-            if (asset.pePercentile <= 20) { tempScore = 3; } 
-            else if (asset.pePercentile <= 40) { tempScore = 2; } 
-            else if (asset.pePercentile <= 60) { tempScore = 1; }
-            score += tempScore; breakdown.peScore = tempScore;
+        function calculateScore(asset) {
+            const pePct = Number.isFinite(asset.pePercentile) ? asset.pePercentile : 100;
+            const pbPct = Number.isFinite(asset.pbPercentile) ? asset.pbPercentile : 100;
+            const valuePct = Math.max(pePct, pbPct);
+            const drawdown = Number.isFinite(asset.drawdown) ? asset.drawdown : 0;
 
-            tempScore = 0;
-            if (asset.pbPercentile <= 20) { tempScore = 3; } 
-            else if (asset.pbPercentile <= 40) { tempScore = 2; } 
-            else if (asset.pbPercentile <= 60) { tempScore = 1; }
-            score += tempScore; breakdown.pbScore = tempScore;
-            
-            tempScore = 0;
-            if (asset.dividendPercentile >= 80) { tempScore = 3; } 
-            else if (asset.dividendPercentile >= 60) { tempScore = 2; } 
-            else if (asset.dividendPercentile >= 40) { tempScore = 1; }
-            score += tempScore; breakdown.dividendScore = tempScore;
+            const valueScore = clamp(Math.round((100 - valuePct) / 8), 0, 12);
+            const painScore = clamp(Math.round(drawdown * 16), 0, 8);
 
-            tempScore = 0;
-            if (asset.drawdown >= 0.5) { tempScore = 3; } 
-            else if (asset.drawdown >= 0.3) { tempScore = 2; } 
-            else if (asset.drawdown >= 0.1) { tempScore = 1; }
-            score += tempScore; breakdown.drawdownScore = tempScore;
+            const total = valueScore + painScore;
+            const rating = ratingBuckets.find(bucket => total >= bucket.min) || ratingBuckets.at(-1);
 
-            let rating, colorClasses, stars;
-            if (score >= 10) { rating = '五星级猎物'; stars = '★★★★★'; colorClasses = 'bg-green-800/50 border-green-600 text-green-300'; }
-            else if (score >= 7) { rating = '四星级猎物'; stars = '★★★★☆'; colorClasses = 'bg-emerald-800/50 border-emerald-600 text-emerald-300'; }
-            else if (score >= 4) { rating = '三星级观察'; stars = '★★★☆☆'; colorClasses = 'bg-yellow-800/50 border-yellow-600 text-yellow-300'; }
-            else if (score >= 2) { rating = '二星级警惕'; stars = '★★☆☆☆'; colorClasses = 'bg-orange-800/50 border-orange-600 text-orange-300'; }
-            else { rating = '一星级规避'; stars = '★☆☆☆☆'; colorClasses = 'bg-red-800/50 border-red-600 text-red-300'; }
-            
-            return { totalScore: score, rating, stars, colorClasses, breakdown };
+            return {
+                total,
+                ratingLabel: rating.label,
+                ratingClasses: rating.classes,
+                stars: makeStars(rating.stars),
+                breakdown: { valueScore, painScore },
+            };
         }
 
-        function renderDashboard(assetsData) {
+        function createDetailRow(label, value, extra) {
+            return `
+                <div class="flex flex-col gap-1 p-3 bg-gray-800/60 rounded-md">
+                    <span class="text-xs uppercase tracking-wide text-gray-400">${label}</span>
+                    <span class="text-lg font-semibold text-white">${value}</span>
+                    <span class="text-xs text-gray-500">${extra}</span>
+                </div>`;
+        }
+
+        function renderDashboard(assets) {
             const grid = document.getElementById('dashboard-grid');
-            assetsData.sort((a, b) => calculateScoreAndRating(b).totalScore - calculateScoreAndRating(a).totalScore);
-            grid.innerHTML = ''; 
-            
-            assetsData.forEach((asset, index) => {
-                const { totalScore, rating, stars, colorClasses, breakdown } = calculateScoreAndRating(asset);
+            assets.sort((a, b) => calculateScore(b).total - calculateScore(a).total);
+            grid.innerHTML = '';
+
+            assets.forEach((asset, index) => {
+                const score = calculateScore(asset);
+                const details = [
+                    createDetailRow('PE', formatNumber(asset.pe), `百分位 ${formatPercentile(asset.pePercentile)}`),
+                    createDetailRow('PB', formatNumber(asset.pb), `百分位 ${formatPercentile(asset.pbPercentile)}`),
+                    createDetailRow('股息率', formatPercent(asset.dividendYield), '来自 djeva TTM'),
+                    createDetailRow('ROE', formatPercent(asset.roe, 1), '来自 djeva TTM'),
+                    createDetailRow('回撤', formatPercent(asset.drawdown), `Pain 得分 ${score.breakdown.painScore}`),
+                    createDetailRow('价值得分', score.breakdown.valueScore, 'Value (0-12)'),
+                ].join('');
+
                 const cardHTML = `
-                    <div class="asset-card border-2 rounded-lg p-5 ${colorClasses} transition-all duration-300 hover:shadow-lg hover:shadow-gray-800/50 hover:border-gray-500 cursor-pointer" data-index="${index}">
-                        <div class="flex justify-between items-start">
+                    <div class="asset-card border-2 rounded-lg p-5 ${score.ratingClasses} transition-all duration-300 hover:shadow-lg hover:shadow-gray-800/50 hover:border-gray-500 cursor-pointer" data-index="${index}">
+                        <div class="flex justify-between items-start gap-4">
                             <div>
                                 <h2 class="text-xl font-bold text-white">${asset.indexName} <span class="text-sm font-normal text-gray-400">${asset.indexCode}</span></h2>
-                                <p class="text-xs text-gray-400">${asset.etfs.join(', ')}</p>
+                                <p class="text-xs text-gray-400">${asset.etfs.join(', ') || '—'}</p>
                             </div>
                             <div class="text-right">
-                                <div class="text-3xl font-bold text-white">${totalScore} <span class="text-base">分</span></div>
-                                <div class="star-rating">${stars}</div>
+                                <div class="text-3xl font-bold text-white">${score.total} <span class="text-base">分</span></div>
+                                <div class="star-rating">${score.stars}</div>
                             </div>
                         </div>
-                        <div class="mt-4 text-center text-sm font-medium rounded-md px-3 py-1 ${colorClasses.replace('bg-', 'bg-').replace('/50', '/80')}">${rating}</div>
-                        <div class="details-content mt-4 pt-4 border-t border-gray-700 text-sm text-gray-300" id="details-${index}">
-                           <div class="grid grid-cols-2 gap-2">
-                                <div>PE百分位: <span class="font-semibold text-white">${asset.pePercentile}%</span></div>
-                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.peScore}</span></div>
-                                <div>PB百分位: <span class="font-semibold text-white">${asset.pbPercentile}%</span></div>
-                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.pbScore}</span></div>
-                                <div>股息率百分位: <span class="font-semibold text-white">${asset.dividendPercentile}%</span></div>
-                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.dividendScore}</span></div>
-                                <div>高点回撤: <span class="font-semibold text-white">${(asset.drawdown * 100).toFixed(0)}%</span></div>
-                                <div class="text-right">得分: <span class="font-semibold text-white">${breakdown.drawdownScore}</span></div>
-                           </div>
+                        <div class="mt-4 text-center text-sm font-medium rounded-md px-3 py-1 bg-white/10 text-white">${score.ratingLabel}</div>
+                        <div class="details-content mt-4 pt-4 border-t border-gray-700" id="details-${index}">
+                            <div class="grid grid-cols-2 gap-3">${details}</div>
                         </div>
                     </div>`;
                 grid.insertAdjacentHTML('beforeend', cardHTML);

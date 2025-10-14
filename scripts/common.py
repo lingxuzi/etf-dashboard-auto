@@ -31,4 +31,11 @@ def ensure_data_dir(*segments: str) -> Path:
     return target
 
 
-__all__ = ["PROJECT_ROOT", "DATA_ROOT", "load_indices", "ensure_data_dir"]
+def ensure_workspace_dir(*segments: str) -> Path:
+    """Ensure a directory relative to project root exists."""
+    target = PROJECT_ROOT.joinpath(*segments)
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+__all__ = ["PROJECT_ROOT", "DATA_ROOT", "load_indices", "ensure_data_dir", "ensure_workspace_dir"]

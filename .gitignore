@@ -6,7 +6,10 @@ agents/
 .serena
 doc
 对话历史记录&PLAN.md
-
+data_cache/
+data/raw/
+data/processed/
+GPT回复2.md
 # 依赖
 node_modules/
 npm-debug.log*

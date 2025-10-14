@@ -1,127 +1,77 @@
-"""Fetch US index price & dividend data via Yahoo Finance."""
+"""Fetch US/overseas index prices via yfinance."""
 
 from __future__ import annotations
 
 import datetime as dt
-import json
-from typing import Iterable
+from pathlib import Path
+from typing import Iterable, List
 
-import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from .common import ensure_data_dir, load_indices
+try:
+    from .common import ensure_data_dir, load_indices
+except ImportError:  # pragma: no cover - direct execution fallback
+    import sys
+
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
+    from scripts.common import ensure_data_dir, load_indices  # type: ignore
 
 
 RAW_DIR = ensure_data_dir("raw", "us_index")
 PRICE_FILENAME = "{code}_price.csv"
-DIVIDEND_FILENAME = "{code}_dividend.csv"
 
 
-def _candidate_symbols(cfg: dict[str, object]) -> list[str]:
-    candidates: list[str] = []
-    primary = cfg.get("price_symbol")
-    if isinstance(primary, str) and primary:
-        candidates.append(primary)
-    return list(dict.fromkeys(candidates))
+def _candidate_symbols(primary: str, extras: Iterable[str]) -> List[str]:
+    symbols: List[str] = []
+    if primary:
+        symbols.append(primary)
+    for item in extras:
+        if isinstance(item, str) and item and item not in symbols:
+            symbols.append(item)
+    return symbols
 
 
-def _candidate_proxies(cfg: dict[str, object]) -> list[str]:
-    proxies = []
-    raw = cfg.get("etf_proxies") or []
-    if isinstance(raw, Iterable):
-        for ticker in raw:
-            if isinstance(ticker, str):
-                proxies.append(ticker)
-    return list(dict.fromkeys(proxies))
-
-
-def fetch_price(symbols: list[str], start: dt.date) -> pd.DataFrame:
+def _fetch(symbols: Iterable[str], start: dt.date) -> pd.DataFrame:
     last_error: Exception | None = None
     for symbol in symbols:
         try:
             df = yf.download(symbol, start=start.isoformat(), progress=False, auto_adjust=False)
             if df.empty:
                 continue
-            prices = df.reset_index()[["Date", "Close"]]
-            prices.columns = ["date", "close"]
-            prices["date"] = pd.to_datetime(prices["date"])
-            prices = prices.dropna(subset=["date", "close"]).sort_values("date")
-            if not prices.empty:
-                return prices
-        except Exception as exc:  # noqa: BLE001
-            last_error = exc
-            continue
-    if last_error:
-        raise last_error
-    raise RuntimeError("未能获取指数行情数据")
-
-
-def fetch_dividend_yield(proxies: list[str], start: dt.date) -> pd.DataFrame:
-    last_error: Exception | None = None
-    for proxy in proxies:
-        try:
-            ticker = yf.Ticker(proxy)
-            history = ticker.history(start=start.isoformat(), auto_adjust=False)
-            if history.empty:
-                continue
-            history.index = pd.to_datetime(history.index)
-            dividends = ticker.dividends
-            dividends.index = pd.to_datetime(dividends.index)
-            frame = history[["Close"]].rename(columns={"Close": "close"})
-            frame["dividend"] = dividends.reindex(frame.index, fill_value=0.0)
-            frame["dividend_ttm"] = frame["dividend"].rolling(window="365D").sum()
-            frame["dividend_yield"] = frame["dividend_ttm"] / frame["close"]
-            frame.replace([np.inf, -np.inf], np.nan, inplace=True)
-            frame = frame.dropna(subset=["dividend_yield"])
+            frame = df.reset_index()[["Date", "Close"]]
+            frame.columns = ["date", "close"]
+            frame["date"] = pd.to_datetime(frame["date"])
+            frame = frame.loc[frame["date"] >= pd.Timestamp(start)].dropna(subset=["close"])
             if frame.empty:
                 continue
-            result = frame.reset_index()[["Date", "dividend_yield"]]
-            result.columns = ["date", "dividend_yield"]
-            result["source"] = proxy
-            return result.sort_values("date")
+            return frame.sort_values("date")
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             continue
     if last_error:
         raise last_error
-    raise RuntimeError("未能计算股息率")
+    raise RuntimeError("未能获取任何有效的行情数据")
 
 
 def main() -> None:
-    indices = [entry for entry in load_indices() if entry.get("class") == "US_INDEX"]
-    start_date = dt.date.today() - dt.timedelta(days=365 * 15)
-    summary: list[dict[str, object]] = []
+    indices = [cfg for cfg in load_indices() if cfg.get("class") == "US_INDEX"]
+    if not indices:
+        raise SystemExit("config/indices.yaml 未配置任何 US_INDEX 指数")
+
+    start_date = dt.date.today() - dt.timedelta(days=365 * 20)
 
     for cfg in indices:
         code = cfg["code"]
-        try:
-            price_df = fetch_price(_candidate_symbols(cfg), start_date)
-            price_path = RAW_DIR / PRICE_FILENAME.format(code=code)
-            price_df.to_csv(price_path, index=False)
+        primary = str(cfg.get("price_symbol") or code)
+        extras = cfg.get("etf_proxies", [])
+        symbols = _candidate_symbols(primary, extras)
 
-            dividend_df = fetch_dividend_yield(_candidate_proxies(cfg), start_date)
-            dividend_path = RAW_DIR / DIVIDEND_FILENAME.format(code=code)
-            dividend_df.to_csv(dividend_path, index=False)
-
-            summary.append(
-                {
-                    "code": code,
-                    "price_rows": int(len(price_df)),
-                    "dividend_rows": int(len(dividend_df)),
-                    "dividend_source": dividend_df["source"].iloc[-1],
-                }
-            )
-            print(f"[US_INDEX] {code} -> 行情 {len(price_df)} 行, 股息率 {len(dividend_df)} 行")
-        except Exception as exc:  # noqa: BLE001
-            error_path = RAW_DIR / f"{code}_error.log"
-            error_path.write_text(str(exc), encoding="utf-8")
-            print(f"[US_INDEX] {code} 抓取失败: {exc}")
-
-    (RAW_DIR / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+        print(f"[US_INDEX] {code} -> {', '.join(symbols)}")
+        frame = _fetch(symbols, start_date)
+        path = RAW_DIR / PRICE_FILENAME.format(code=code)
+        frame.to_csv(path, index=False)
+        print(f"  行情 {len(frame)} 条，来源 {symbols[0]}")
 
 
 if __name__ == "__main__":
