@@ -1,0 +1,11 @@
+# TODO: populate with index configuration entries.
+# Example:
+# - name: 中证500
+#   code: "000905"
+#   class: "CN_CSI"
+#   price_symbol: "csi:000905"
+#   pe_source: "csindex"
+#   dp_source: "csindex"
+#   pb_source: "auto"
+#   etf_proxies:
+#     - "510500.SS"
