@@ -21,7 +21,6 @@
   etf_proxies:
     - "3067.HK"
     - "513180.SS"
-    - "KTEC.SI"
 
 - name: 恒生指数
   code: "HKHSI"

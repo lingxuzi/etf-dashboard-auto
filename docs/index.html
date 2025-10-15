@@ -31,82 +31,97 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Inter', 'Helvetica Neue', 'Arial', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        .sticky-head { position: sticky; top: 0; backdrop-filter: blur(8px); }
+        .sticky-head { backdrop-filter: blur(8px); z-index: 20; }
     </style>
 </head>
 <body class="antialiased transition-colors duration-300 bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100" data-theme="">
 
-    <div class="max-w-6xl mx-auto px-4 py-6 md:py-10 space-y-8">
-        <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div class="max-w-7xl mx-auto px-4 py-6 md:py-10 space-y-8">
+        <header class="space-y-3">
             <div class="space-y-2">
                 <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
                     ETF 估值与性价比仪表盘
-                    <span class="text-sm text-slate-500 dark:text-slate-400 align-super">djeva 数据驱动</span>
                 </h1>
-                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">数据来源：蛋卷指数估值 API 与本地价格历史，评分遵循 Value / Pain 双维度。</p>
-            </div>
-            <div class="flex items-center justify-end gap-3">
-                <button type="button" id="theme-toggle" class="relative inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white" aria-label="切换主题">
-                    <span id="theme-toggle-icon" class="text-lg">🌙</span>
-                    <span id="theme-toggle-text" class="hidden sm:inline">浅色模式</span>
-                </button>
+                <p class="text-sm md:text-base text-slate-500 dark:text-slate-400">帮助 ETF 投资者快速识别低估机会与风险暴露，聚焦最重要的估值指标与回撤表现。</p>
             </div>
         </header>
 
         <section class="grid gap-4 md:grid-cols-2">
             <article class="rounded-xl border border-slate-200/70 bg-white/90 p-5 shadow-lg shadow-slate-900/10 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/40">
-                <h2 class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">数据摘要</h2>
-                <p class="mt-3 text-lg font-medium text-slate-800 dark:text-slate-100">djeva 官方估值 + AkShare / Yahoo 行情</p>
-                <div class="mt-4 flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
-                    <span>最近更新：<span id="last-updated" class="text-slate-800 font-semibold dark:text-slate-100"></span></span>
-                    <span>覆盖指数：<span id="total-assets" class="text-slate-800 font-semibold dark:text-slate-100"></span></span>
+                <h2 class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">评分标准</h2>
+                <div class="mt-3 space-y-4 text-sm text-slate-600 dark:text-slate-300">
+                    <div class="rounded-lg border border-slate-200/60 bg-white/80 p-4 dark:border-slate-800/60 dark:bg-slate-900/60">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Value 维度（0-12 分）</div>
+                        <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">提取官方 PE、PB 百分位的较大值，将其映射到 0-12 档。处于历史低位区间（百分位接近 0）得分上限，历史高位则被压制。</p>
+                        <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">目的：衡量估值便宜程度，避免单看绝对数值忽略历史位置。</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200/60 bg-white/80 p-4 dark:border-slate-800/60 dark:bg-slate-900/60">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Pain 维度（0-8 分）</div>
+                        <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">基于近 10 年窗口最大回撤，将跌幅线性映射到 0-8 分。回撤越深代表市场经历的痛苦越多，潜在安全垫越厚。</p>
+                        <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">目的：关注市场情绪与风险释放程度，为逆向配置提供依据。</p>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500">综合得分 = Value + Pain。股息率与 ROE 当前仅做展示，不计入总分。</p>
+                </div>
+                <div class="mt-5 flex flex-col gap-3 text-slate-600 dark:text-slate-300 md:flex-row">
+                    <div class="flex-1 rounded-lg border border-slate-200/70 bg-white/85 p-4 dark:border-slate-800/70 dark:bg-slate-900/60">
+                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">最近更新</div>
+                        <div id="last-updated" class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">--</div>
+                        <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">展示最新一次数据落地时间，快照自动刷新。</div>
+                    </div>
+                    <div class="flex-1 rounded-lg border border-slate-200/70 bg-white/85 p-4 dark:border-slate-800/70 dark:bg-slate-900/60">
+                        <div class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">覆盖指数</div>
+                        <div class="mt-1 text-lg font-semibold text-slate-900 dark:text-white"><span id="total-assets">--</span> 支</div>
+                        <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">当前估值池可跟踪的 ETF 指数数量。</div>
+                    </div>
                 </div>
             </article>
+
             <article class="rounded-xl border border-slate-200/70 bg-white/90 p-5 shadow-lg shadow-slate-900/10 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/40">
-                <h2 class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">评分逻辑（总分 20）</h2>
-                <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                    <li><strong class="text-slate-800 dark:text-white">Value</strong>（0-12）：直接取官方 PE / PB 百分位较高者，百分位越低得分越高。</li>
-                    <li><strong class="text-slate-800 dark:text-white">Pain</strong>（0-8）：按 10 年窗口最大回撤，跌得越狠越高分。</li>
-                </ul>
-                <p class="mt-3 text-xs text-slate-400 dark:text-slate-500">股息率与 ROE 当前仅展示参考值，暂不计入得分。</p>
+                <h2 class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">今日看点</h2>
+                <div class="mt-3 grid gap-4">
+                    <div>
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-emerald-500 dark:text-emerald-300">高性价比</h3>
+                        <ul id="insight-opportunities" class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"></ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-semibold uppercase tracking-wide text-rose-500 dark:text-rose-300">风险警示</h3>
+                        <ul id="insight-risks" class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"></ul>
+                    </div>
+                </div>
             </article>
         </section>
 
         <section class="space-y-4">
             <div class="hidden lg:block">
-                <div class="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/60 dark:shadow-black/40">
-                    <table class="min-w-full text-sm">
-                        <thead class="sticky-head border-b border-slate-200/70 bg-white/90 text-slate-500 dark:border-slate-800/70 dark:bg-slate-950/90 dark:text-slate-400">
+                <div class="rounded-xl border border-slate-200/80 bg-white/85 shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/60 dark:shadow-black/40">
+                    <div class="overflow-x-auto overflow-y-visible">
+                        <table class="min-w-[1100px] border-separate border-spacing-0 text-sm">
+                        <thead class="sticky-head border-b border-slate-200/70 bg-white/95 text-slate-500 dark:border-slate-800/70 dark:bg-slate-950/90 dark:text-slate-400">
                             <tr class="text-xs uppercase tracking-widest">
-                                <th scope="col" class="px-4 py-3 text-left">指数</th>
-                                <th scope="col" class="px-4 py-3 text-center">代码</th>
-                                <th scope="col" class="px-4 py-3 text-right">PE</th>
-                                <th scope="col" class="px-4 py-3 text-right">PE百分位</th>
-                                <th scope="col" class="px-4 py-3 text-right">PB</th>
-                                <th scope="col" class="px-4 py-3 text-right">PB百分位</th>
-                                <th scope="col" class="px-4 py-3 text-right">股息率</th>
-                                <th scope="col" class="px-4 py-3 text-right">ROE</th>
-                                <th scope="col" class="px-4 py-3 text-right">回撤</th>
-                                <th scope="col" class="px-4 py-3 text-right">评分</th>
+                                <th scope="col" class="sticky left-0 top-0 z-30 w-64 px-4 py-3 text-left shadow-sm bg-white/95 dark:bg-slate-950/90">指数</th>
+                                <th scope="col" class="sticky top-0 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">代码</th>
+                                <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">PE</th>
+                                <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">PE百分位</th>
+                                <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">PB</th>
+                                <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">PB百分位</th>
+                                <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">股息率</th>
+                                <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">ROE</th>
+                                <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">回撤</th>
+                                <th scope="col" class="sticky top-0 min-w-[10rem] px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">评分</th>
                             </tr>
                         </thead>
                         <tbody id="table-view" class="bg-white/70 text-slate-700 dark:bg-slate-900/40 dark:text-slate-200 divide-y divide-slate-200/70 dark:divide-slate-800/60"></tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <div class="lg:hidden space-y-4" id="card-view"></div>
         </section>
 
-        <footer class="mt-10 rounded-xl border border-slate-200/70 bg-white/80 p-5 text-sm text-slate-500 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400 space-y-3">
-            <div>
-                <h3 class="text-slate-700 font-semibold mb-2 dark:text-slate-200">字段说明</h3>
-                <p class="text-xs">CSV 列需包含：<code>index_name,index_code,etfs,pe,pe_pct,pb,pb_pct,dividend,roe,drawdown,eva_type</code>。百分位由 djeva API 提供，回撤基于本地价格序列。</p>
-            </div>
-            <div>
-                <h3 class="text-slate-700 font-semibold mb-2 dark:text-slate-200">调试提示</h3>
-                <p class="text-xs">如需离线预览，请通过本地静态服务器访问，避免 <code>file://</code> 跨域限制。</p>
-            </div>
+        <footer class="mt-10 rounded-xl border border-slate-200/70 bg-white/85 p-5 text-xs text-slate-500 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400 space-y-3">
+            <p>数据在交易日北京时间 18:30 左右自动更新，若数据源滞后将沿用上一日数值。</p>
+            <p>本工具仅供研究参考，不构成投资建议，请结合自身风险承受能力审慎决策。</p>
         </footer>
     </div>
 
@@ -114,6 +129,7 @@
         const CSV_URL = 'assets.csv';
         const JSON_URL = 'assets.json';
         const THEME_KEY = 'etf-dashboard-theme';
+        const CHIP_WIDTH = '7rem';
 
         const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
         const toNumber = (value) => {
@@ -125,6 +141,63 @@
         const formatPercent = (value, digits = 1) => value === null || value === undefined ? '--' : (Number(value) * 100).toFixed(digits) + '%';
         const formatPercentile = (value, digits = 1) => value === null || value === undefined ? '--' : Number(value).toFixed(digits) + '%';
         const makeStars = (count) => '★'.repeat(count) + '☆'.repeat(5 - count);
+
+        function parseUpdatedAt(headers) {
+            if (!headers || typeof headers.get !== 'function') return null;
+            const raw = headers.get('last-modified');
+            if (!raw) return null;
+            const date = new Date(raw);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function parseEtfList(raw) {
+            if (Array.isArray(raw)) {
+                return raw.map(item => String(item).trim()).filter(Boolean);
+            }
+            if (raw === null || raw === undefined) return [];
+            return String(raw)
+                .split(';')
+                .map(part => part.trim())
+                .filter(Boolean);
+        }
+
+        function pickValue(raw, keys) {
+            for (const key of keys) {
+                if (raw && Object.prototype.hasOwnProperty.call(raw, key)) {
+                    const value = raw[key];
+                    if (value !== undefined && value !== null && value !== '') {
+                        return value;
+                    }
+                }
+            }
+            return undefined;
+        }
+
+        function normalizeAssetRow(raw) {
+            const indexName = String(raw.index_name ?? raw.indexName ?? '').trim();
+            const indexCode = String(raw.index_code ?? raw.indexCode ?? '').trim();
+            const etfField = pickValue(raw, ['etfs', 'etf_display', 'etf_proxies', 'etf']);
+            return {
+                indexName,
+                indexCode,
+                etfs: parseEtfList(etfField),
+                pe: toNumber(pickValue(raw, ['pe', 'pe_current'])),
+                pePercentile: toNumber(pickValue(raw, ['pe_pct', 'pePercentile', 'pe_percentile'])),
+                pb: toNumber(pickValue(raw, ['pb', 'pb_current'])),
+                pbPercentile: toNumber(pickValue(raw, ['pb_pct', 'pbPercentile', 'pb_percentile'])),
+                dividendYield: toNumber(pickValue(raw, ['dividend', 'dividend_yield', 'dividendCurrent', 'dividend_current'])),
+                roe: toNumber(pickValue(raw, ['roe', 'roe_current'])),
+                drawdown: toNumber(pickValue(raw, ['drawdown'])),
+                evaType: String(pickValue(raw, ['eva_type', 'evaType']) ?? '').trim(),
+            };
+        }
+
+        function normalizeAssets(rows) {
+            if (!Array.isArray(rows)) return [];
+            return rows
+                .map(normalizeAssetRow)
+                .filter(asset => asset.indexName);
+        }
 
         const ratingBuckets = [
             { min: 18, label: '猎杀区', pillClass: 'border border-emerald-400/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100', stars: 5 },
@@ -141,13 +214,17 @@
         };
 
         let cachedSortedAssets = [];
+        let cachedSummary = null;
+        let lastUpdatedAt = null;
 
         function currentTheme() {
             return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         }
 
         function percentileChip(value) {
-            if (!Number.isFinite(value)) return '<span class="text-slate-400 dark:text-slate-500">--</span>';
+            if (!Number.isFinite(value)) {
+                return `<span class="inline-flex items-center justify-center rounded-lg border border-dashed border-slate-300 px-3 py-1 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-500" style="width: ${CHIP_WIDTH}">--</span>`;
+            }
             const pct = clamp(value, 0, 100);
             const theme = currentTheme();
             const borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(148, 163, 184, 0.4)';
@@ -160,12 +237,15 @@
                 `background-size: ${Math.max(pct, 2)}% 100%`,
                 'background-repeat: no-repeat',
                 `border-color: ${borderColor}`,
+                `width: ${CHIP_WIDTH}`,
             ].join(';');
             return `<span class="inline-flex items-center justify-center rounded-lg border px-3 py-1 text-sm font-semibold ${textColor}" style="${style}">${pct.toFixed(1)}%</span>`;
         }
 
         function drawdownChip(value) {
-            if (!Number.isFinite(value)) return '<span class="text-slate-400 dark:text-slate-500">--</span>';
+            if (!Number.isFinite(value)) {
+                return `<span class="inline-flex items-center justify-center rounded-lg border border-dashed border-slate-300 px-3 py-1 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-500" style="width: ${CHIP_WIDTH}">--</span>`;
+            }
             const pct = clamp(value * 100, 0, 100);
             const theme = currentTheme();
             const borderColor = theme === 'dark' ? 'rgba(56, 189, 248, 0.45)' : 'rgba(14,165,233,0.4)';
@@ -178,6 +258,7 @@
                 `background-size: ${Math.max(pct, 2)}% 100%`,
                 'background-repeat: no-repeat',
                 `border-color: ${borderColor}`,
+                `width: ${CHIP_WIDTH}`,
             ].join(';');
             return `<span class="inline-flex items-center justify-center rounded-lg border px-3 py-1 text-sm font-semibold ${textColor}" style="${style}">${pct.toFixed(1)}%</span>`;
         }
@@ -205,6 +286,127 @@
             return `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${score.rating.pillClass}"><span>${score.total}</span><span class="text-xs font-medium">${score.rating.label}</span></span>`;
         }
 
+        function formatDateTime(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+            try {
+                return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+            } catch (err) {
+                console.warn('格式化日期时使用默认时区。', err);
+                return date.toLocaleString('zh-CN', { hour12: false });
+            }
+        }
+
+        function buildAssetSummary(assets) {
+            const opportunityCandidates = [];
+            const drawdownLeaders = [];
+            const scoreFloor = [];
+            let opportunityCount = 0;
+            let riskCount = 0;
+
+            assets.forEach(asset => {
+                const score = calculateScore(asset);
+                const drawdown = Number.isFinite(asset.drawdown) ? asset.drawdown : 0;
+
+                opportunityCandidates.push({ asset, score });
+                drawdownLeaders.push({ asset, score, drawdown });
+                scoreFloor.push({ asset, score });
+
+                if (score.rating.label === '猎杀区') opportunityCount += 1;
+                if (score.rating.label === '泡沫区') riskCount += 1;
+            });
+
+            const topOpportunities = opportunityCandidates
+                .sort((a, b) => b.score.total - a.score.total)
+                .slice(0, 3);
+
+            const topRisks = drawdownLeaders
+                .sort((a, b) => b.drawdown - a.drawdown)
+                .slice(0, 3);
+
+            const lowestScores = scoreFloor
+                .sort((a, b) => a.score.total - b.score.total)
+                .slice(0, 3);
+
+            return {
+                total: assets.length,
+                opportunityCount,
+                riskCount,
+                topOpportunities,
+                topRisks,
+                lowestScores,
+            };
+        }
+
+        function updateOverview(summary, updatedAt) {
+            const lastUpdatedEl = document.getElementById('last-updated');
+            if (lastUpdatedEl) {
+                const formatted = updatedAt ? formatDateTime(updatedAt) : null;
+                lastUpdatedEl.textContent = formatted || '未知';
+            }
+
+            const totalAssetsEl = document.getElementById('total-assets');
+            if (totalAssetsEl) totalAssetsEl.textContent = summary.total?.toString() || '--';
+
+            const opportunityEl = document.getElementById('opportunity-count');
+            if (opportunityEl) opportunityEl.textContent = summary.opportunityCount?.toString() || '0';
+
+            const riskEl = document.getElementById('risk-count');
+            if (riskEl) riskEl.textContent = summary.riskCount?.toString() || '0';
+        }
+
+        function renderHighlights(summary) {
+            const opportunityEl = document.getElementById('insight-opportunities');
+            const riskEl = document.getElementById('insight-risks');
+
+            if (opportunityEl) {
+                if (!summary.topOpportunities.length) {
+                    opportunityEl.innerHTML = '<li class="rounded-lg border border-slate-200/70 bg-white/60 px-3 py-2 text-xs text-slate-400 dark:border-slate-800/70 dark:bg-slate-900/40 dark:text-slate-500">暂无高性价比候选</li>';
+                } else {
+                    opportunityEl.innerHTML = summary.topOpportunities
+                        .map(({ asset, score }, index) => {
+                            const rank = index + 1;
+                            return `
+                                <li class="rounded-lg border border-emerald-200/60 bg-emerald-50/40 px-3 py-2 shadow-sm shadow-emerald-500/10 transition hover:border-emerald-300 dark:border-emerald-800/50 dark:bg-emerald-900/30">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white"><span class="text-xs font-medium text-emerald-500 dark:text-emerald-300">#${rank}</span>${asset.indexName}</span>
+                                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-300">${score.total}</span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Value / Pain ${score.breakdown.valueScore} / ${score.breakdown.painScore}</div>
+                                </li>
+                            `;
+                        })
+                        .join('');
+                }
+            }
+
+            if (riskEl) {
+                const riskCandidates = summary.topRisks.filter(item => item.drawdown > 0);
+                const fallbackTargets = riskCandidates.length ? riskCandidates : summary.lowestScores;
+                if (!fallbackTargets.length) {
+                    riskEl.innerHTML = '<li class="rounded-lg border border-slate-200/70 bg-white/60 px-3 py-2 text-xs text-slate-400 dark:border-slate-800/70 dark:bg-slate-900/40 dark:text-slate-500">暂无风险提示</li>';
+                } else {
+                    riskEl.innerHTML = fallbackTargets
+                        .map(({ asset, score, drawdown }, index) => {
+                            const drawdownText = Number.isFinite(drawdown) && drawdown > 0 ? formatPercent(drawdown, 1) : null;
+                            const riskMetric = drawdownText || `${score.total}`;
+                            const subtitle = drawdownText
+                                ? `最大回撤 ${drawdownText}`
+                                : `总分 ${score.total}`;
+                            return `
+                                <li class="rounded-lg border border-rose-200/60 bg-rose-50/40 px-3 py-2 shadow-sm shadow-rose-500/10 transition hover:border-rose-300 dark:border-rose-800/50 dark:bg-rose-900/30">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="flex items-center gap-2 font-semibold text-slate-800 dark:text-white"><span class="text-xs font-medium text-rose-500 dark:text-rose-300">#${index + 1}</span>${asset.indexName}</span>
+                                        <span class="text-sm font-bold text-rose-500 dark:text-rose-300">${riskMetric}</span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">${subtitle} · ${score.rating.label}</div>
+                                </li>
+                            `;
+                        })
+                        .join('');
+                }
+            }
+        }
+
         function renderTable(assets) {
             const tbody = document.getElementById('table-view');
             tbody.innerHTML = assets.map(asset => {
@@ -213,8 +415,8 @@
                 const badgeClass = EVA_BADGES[evaKey] || EVA_BADGES.mid;
                 const etfText = asset.etfs.join(', ');
                 return `
-                    <tr class="group transition hover:bg-slate-100/80 dark:hover:bg-slate-900/70">
-                        <td class="px-4 py-4 align-middle">
+                    <tr class="group relative transition hover:bg-slate-100/80 dark:hover:bg-slate-900/70">
+                        <td class="sticky left-0 z-20 w-64 px-4 py-4 align-middle bg-white/85 backdrop-blur dark:bg-slate-900/60">
                             <div class="flex flex-col gap-2" title="${etfText || '无 ETF 对应'}">
                                 <div class="flex flex-wrap items-center gap-3">
                                     <span class="text-base font-semibold text-slate-800 transition group-hover:text-sky-600 dark:text-white dark:group-hover:text-sky-200">${asset.indexName}</span>
@@ -228,13 +430,13 @@
                         </td>
                         <td class="px-4 py-4 text-center text-sm text-slate-600 dark:text-slate-300">${asset.indexCode || '--'}</td>
                         <td class="px-4 py-4 text-right text-sm text-slate-700 dark:text-slate-200">${formatNumber(asset.pe, 2)}</td>
-                        <td class="px-4 py-4 text-right">${percentileChip(asset.pePercentile)}</td>
+                        <td class="w-28 px-4 py-4 text-center">${percentileChip(asset.pePercentile)}</td>
                         <td class="px-4 py-4 text-right text-sm text-slate-700 dark:text-slate-200">${formatNumber(asset.pb, 2)}</td>
-                        <td class="px-4 py-4 text-right">${percentileChip(asset.pbPercentile)}</td>
+                        <td class="w-28 px-4 py-4 text-center">${percentileChip(asset.pbPercentile)}</td>
                         <td class="px-4 py-4 text-right text-sm text-emerald-600 dark:text-emerald-200">${formatPercent(asset.dividendYield, 2)}</td>
                         <td class="px-4 py-4 text-right text-sm text-sky-600 dark:text-sky-200">${formatPercent(asset.roe, 2)}</td>
-                        <td class="px-4 py-4 text-right">${drawdownChip(asset.drawdown)}</td>
-                        <td class="px-4 py-4 text-right">${ratingPill(score)}</td>
+                        <td class="w-28 px-4 py-4 text-center">${drawdownChip(asset.drawdown)}</td>
+                        <td class="min-w-[11rem] px-4 py-4 text-right">${ratingPill(score)}</td>
                     </tr>
                 `;
             }).join('');
@@ -299,88 +501,83 @@
         async function loadCSV(url) {
             const res = await fetch(url + '?ts=' + Date.now());
             if (!res.ok) throw new Error('CSV not found');
+            const updatedAt = parseUpdatedAt(res.headers);
             const text = await res.text();
             const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
             if (parsed.errors.length) console.warn('CSV parse warnings:', parsed.errors);
-            return parsed.data.map(r => ({
-                indexName: String(r.index_name || '').trim(),
-                indexCode: String(r.index_code || '').trim(),
-                etfs: String(r.etfs || '').split(';').map(s => s.trim()).filter(Boolean),
-                pe: toNumber(r.pe),
-                pePercentile: toNumber(r.pe_pct),
-                pb: toNumber(r.pb),
-                pbPercentile: toNumber(r.pb_pct),
-                dividendYield: toNumber(r.dividend),
-                roe: toNumber(r.roe),
-                drawdown: toNumber(r.drawdown),
-                evaType: String(r.eva_type || '').trim(),
-            })).filter(x => x.indexName);
+            return { rows: normalizeAssets(parsed.data), updatedAt };
         }
 
         async function loadJSON(url) {
             const res = await fetch(url + '?ts=' + Date.now());
             if (!res.ok) throw new Error('JSON not found');
-            return await res.json();
+            const updatedAt = parseUpdatedAt(res.headers);
+            const data = await res.json();
+            return { rows: normalizeAssets(Array.isArray(data) ? data : []), updatedAt };
         }
 
         async function loadAssetsData() {
-            try { return await loadCSV(CSV_URL); }
-            catch (_) {
-                try { return await loadJSON(JSON_URL); }
-                catch (e) {
+            try {
+                return await loadCSV(CSV_URL);
+            } catch (_) {
+                try {
+                    return await loadJSON(JSON_URL);
+                } catch (e) {
                     console.error('数据文件未找到，使用内置示例。', e);
-                    return [
-                        {
-                            indexName: '中证500', indexCode: 'SH000905', etfs: ['510500.SS'],
-                            pe: 35.05, pePercentile: 82.0, pb: 2.33, pbPercentile: 73.0,
-                            dividendYield: 0.0135,
-                            roe: 0.066,
-                            drawdown: 0.32, evaType: 'high'
-                        }
-                    ];
+                    return {
+                        rows: normalizeAssets([
+                            {
+                                index_name: '中证500', index_code: 'SH000905', etfs: '510500.SS',
+                                pe: 35.05, pe_pct: 82.0, pb: 2.33, pb_pct: 73.0,
+                                dividend: 0.0135,
+                                roe: 0.066,
+                                drawdown: 0.32, eva_type: 'high'
+                            }
+                        ]),
+                        updatedAt: null,
+                    };
                 }
+            }
+        }
+
+        async function probeLastModified() {
+            try {
+                const res = await fetch(CSV_URL, { method: 'HEAD' });
+                if (!res.ok) return null;
+                return parseUpdatedAt(res.headers);
+            } catch (err) {
+                console.warn('HEAD 请求 Last-Modified 失败。', err);
+                return null;
             }
         }
 
         function syncThemeState() {
             const theme = currentTheme();
             document.body.dataset.theme = theme;
-            const toggleIcon = document.getElementById('theme-toggle-icon');
-            const toggleText = document.getElementById('theme-toggle-text');
-            if (toggleIcon) toggleIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
-            if (toggleText) toggleText.textContent = theme === 'dark' ? '浅色模式' : '深色模式';
-            const toggleBtn = document.getElementById('theme-toggle');
-            if (toggleBtn) {
-                toggleBtn.setAttribute('aria-label', theme === 'dark' ? '切换为浅色模式' : '切换为深色模式');
-            }
             return theme;
         }
 
         (async function () {
             syncThemeState();
 
-            const data = await loadAssetsData();
-            const sorted = [...data].sort((a, b) => calculateScore(b).total - calculateScore(a).total);
-            cachedSortedAssets = sorted;
+            const { rows, updatedAt } = await loadAssetsData();
+            let resolvedUpdatedAt = updatedAt;
+            if (!resolvedUpdatedAt) {
+                resolvedUpdatedAt = await probeLastModified();
+            }
+            const sorted = Array.isArray(rows)
+                ? [...rows].sort((a, b) => calculateScore(b).total - calculateScore(a).total)
+                : [];
 
-            document.getElementById('last-updated').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
-            document.getElementById('total-assets').textContent = sorted.length;
+            cachedSortedAssets = sorted;
+            lastUpdatedAt = resolvedUpdatedAt || null;
+            cachedSummary = buildAssetSummary(sorted);
+
+            updateOverview(cachedSummary, lastUpdatedAt);
+            renderHighlights(cachedSummary);
 
             renderTable(sorted);
             renderCards(sorted);
-
-            const toggleBtn = document.getElementById('theme-toggle');
-            toggleBtn?.addEventListener('click', () => {
-                const next = currentTheme() === 'dark' ? 'light' : 'dark';
-                document.documentElement.classList.toggle('dark', next === 'dark');
-                document.documentElement.dataset.theme = next;
-                localStorage.setItem(THEME_KEY, next);
-                syncThemeState();
-                if (cachedSortedAssets.length) {
-                    renderTable(cachedSortedAssets);
-                    renderCards(cachedSortedAssets);
-                }
-            });
 
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
                 const stored = localStorage.getItem(THEME_KEY);
