@@ -1,56 +1,76 @@
-# ETF Dashboard Auto-Updater
+# ETF 指数估值仪表盘（自动更新版）
 
-本仓库基于你提供的“ETF 估值与性价比仪表盘（自动数据版）”，在 GitHub Actions 上定时抓取行情与估值数据，自动生成 `docs/assets.csv` 并通过 GitHub Pages 对外展示。
+这是一个自动化维护的 ETF 指数估值仪表盘。GitHub Actions 每个交易日抓取估值与行情数据，生成 `docs/assets.csv`，通过 GitHub Pages 暴露 `docs/index.html`，让访问者直接看到最新的打分结果。
 
-## 架构概览
+## 项目速览
 
-- `config/indices.yaml`：25 个目标指数的元数据，包括行情代码、估值来源、ETF 代理。
-- `scripts/`：抓数与加工流水线。
-  - `fetch_cn_csindex.py`：调用 AKShare 的中证指数估值与行情接口。
-  - `fetch_hk_hsi.py`：下载恒生官方网站 Factsheet（解析 PE/PB/Dividend Yield）并使用 Yahoo Finance 获取价格。
-  - `fetch_us_yf.py`：使用 Yahoo Finance 指数行情与 ETF 股息率序列。
-  - `compute_metrics.py`：合成估值百分位与近十年最大回撤。
-  - `build_assets.py`：生成仪表盘读取的 `docs/assets.csv`。
-- `data/`：存放抓取到的原始数据 (`raw/`) 与加工后的指标 (`processed/`)。
-- `docs/`：GitHub Pages 静态站点（`index.html` + 最新 `assets.csv`）。
-- `.github/workflows/update.yml`：定时工作流，每个交易日 18:30（UTC+8）自动更新。
+- 在线仪表盘（启用 GitHub Pages 后）：`https://<your-account>.github.io/etf_dashboard/`
+- 更新频率：工作日北京时间 18:30 左右完成一次全量刷新
+- 覆盖对象：A 股中证系列、恒生系列、美股核心指数及对应 ETF 代理
 
-## 本地运行
+## 功能亮点
 
-1. 安装依赖：
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. 运行流水线：
-   ```bash
-   python scripts/fetch_cn_csindex.py
-   python scripts/fetch_hk_hsi.py
-   python scripts/fetch_us_yf.py
-   python scripts/compute_metrics.py
-   python scripts/build_assets.py
-   ```
-3. 本地预览（避免跨域）：
-   ```bash
-   python -m http.server 8000 --directory docs
-   ```
-   浏览器访问 `http://localhost:8000`.
+- 自动数据管线：`config/indices.yaml` 描述 25 个指数的行情与估值来源，`scripts/` 目录按顺序抓取并计算分位。
+- 多市场覆盖：AKShare（中证估值）、恒指官网 Factsheet、Yahoo Finance 共同提供 A 股 / 港股 / 美股数据。
+- 评分模型透明：PE、PB、股息率百分位 + 近十年最大回撤，一目了然衡量“贵或便宜”。
+- 弹性降权：某些指标缺失时自动降权并归一，保证仪表盘始终可用。
 
-> **注意**：抓数脚本依赖外部数据源，需要可访问互联网的环境。
+## 快速上手
 
-## 数据抓取注意事项
+### 在线查看
 
-- 中证指数估值接口依赖 `www.csindex.com.cn` / `oss-ch.csindex.com.cn`，部分网络环境会直接返回 403；如遇到该问题，请切换出口或暂时将对应指数的 `pe_source/pb_source/dp_source` 设为 `none`，让评分逻辑自动降权。
-- 指标文件可能以 HTML / 旧式 Excel 等格式返回，脚本会尝试多种解析方式；仍失败时请在 `data/raw/cn_csi/` 查看 `*_valuation_missing.log`，确认文件内容后可在 `config/indices.yaml` 补充 `indicator_symbol` 或自行维护估值数据。
-- 恒指 factsheet 路径调整频繁，可在配置中把 `factsheet_url` 改为列表，脚本会依次尝试；继续 404 时请到恒指官网查找最新链接并补充进去。
-- 美股指数已默认在 `etf_proxies` 中包含 ETF 兜底符号（如 XLV），若主指数代码再次失效，可继续添加备用 ETF。
+1. 在仓库 Settings → Pages 启用 `main` 分支 `/docs` 目录。
+2. 等待 Actions 生成最新 `docs/assets.csv`（首次部署可手动触发一次工作流）。
+3. 访问 Pages 链接即可看到仪表盘，浏览器缓存可用 `Shift + F5` 强刷。
 
-## 自动化部署
+### 本地运行
 
-- GitHub Pages：在仓库 Settings → Pages 选择 `main` 分支 `/docs` 目录即可对外发布。
-- 工作流会在有数据更新时提交 `docs/assets.csv` 与 `data/`，便于持续累积估值历史。
+```bash
+pip install -r requirements.txt
+python scripts/fetch_djeva.py
+python scripts/fetch_cn_csindex.py
+python scripts/fetch_hk_hsi.py
+python scripts/fetch_us_yf.py
+python scripts/compute_metrics.py
+python scripts/build_assets.py
+```
 
-## 后续扩展
+运行完成后，`docs/assets.csv` 会被刷新，随即可在本地或 Pages 上查看。
 
-- 若恒生或 AKShare 接口结构变动，可在 `scripts/` 中调整解析逻辑。
-- 可在 `config/indices.yaml` 补充 `etf_display` 字段，实现仪表盘展示更友好的 ETF 名称。
-- 若需要额外指数，只需在配置表添加条目并重新运行流水线。
+### 本地预览
+
+```bash
+python -m http.server 8000 --directory docs
+```
+
+打开浏览器访问 `http://localhost:8000`，即可模拟线上效果。
+
+> 抓数脚本需要外网访问权限；如在 CI 或内网环境执行，请确保出口可访问相应数据源。
+
+## 数据口径与限制
+
+- **中证系指数**：AKShare 调用中证官网估值接口；若站点返回 403，可在配置里暂时将 `pe_source/pb_source/dp_source` 设为 `none`，脚本会自动降权。
+- **恒生系列**：通过恒指官网 Factsheet PDF 抽取 PE/PB/Dividend Yield，补充 Yahoo Finance 行情；月度资料若暂未发布，会沿用上一次值。
+- **美股指数**：使用 Yahoo Finance 指数行情，ETF 代理（如 SPY、QQQ、XLV）提供股息率序列。
+- **缺失处理**：脚本会记录日志到 `data/raw/*`，必要时可手动补数据或新增 `indicator_symbol`。
+
+## 自动化与部署
+
+### GitHub Actions：`Update ETF dashboard data`
+
+- 触发：工作日 UTC 10:30（北京时间 18:30）+ `workflow_dispatch`
+- 步骤：Checkout → 安装依赖 → 执行抓数脚本 → 生成 `docs/assets.csv` → 提交更新
+- 验证：在 Actions 页面手动触发一次，确认日志无误并检查 `docs/assets.csv` 时间戳。
+
+### GitHub Pages
+
+1. 打开 Settings → Pages → `Build and deployment`
+2. 选择 `Deploy from a branch`
+3. Branch 选 `main`，目录选 `/docs`
+4. 保存后等待几分钟，页面即可对外提供 `docs/index.html`
+
+## 常见问题
+
+- **工作流失败怎么办？** 打开 Actions 日志，通常是网络超时或数据源变动；根据提示修正配置或重试。
+- **指数想要扩充？** 在 `config/indices.yaml` 新增条目并指定行情/估值来源，重跑脚本或等定时任务即可。
+- **本地运行缺乏网络？** 先在外网机器运行脚本生成 `data/` 与 `docs/assets.csv`，再同步到目标环境读取。

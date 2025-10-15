@@ -27,6 +27,7 @@ jobs:
 
       - name: Fetch data and compute metrics
         run: |
+          python scripts/fetch_djeva.py
           python scripts/fetch_cn_csindex.py
           python scripts/fetch_hk_hsi.py
           python scripts/fetch_us_yf.py
