@@ -107,8 +107,8 @@
                                 <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">PB百分位</th>
                                 <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">股息率</th>
                                 <th scope="col" class="sticky top-0 px-4 py-3 text-right shadow-sm bg-white/95 dark:bg-slate-950/90">ROE</th>
-                                <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">回撤</th>
-                                <th scope="col" class="sticky top-0 min-w-[10rem] px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">评分</th>
+                                <th scope="col" class="sticky top-0 w-28 px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">当前回撤</th>
+                                <th scope="col" class="sticky top-0 min-w-[7.5rem] px-4 py-3 text-center shadow-sm bg-white/95 dark:bg-slate-950/90">评分</th>
                             </tr>
                         </thead>
                         <tbody id="table-view" class="bg-white/70 text-slate-700 dark:bg-slate-900/40 dark:text-slate-200 divide-y divide-slate-200/70 dark:divide-slate-800/60"></tbody>
@@ -122,6 +122,7 @@
 
         <footer class="mt-10 rounded-xl border border-slate-200/70 bg-white/85 p-5 text-xs text-slate-500 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400 space-y-3">
             <p>数据在交易日北京时间 18:30 左右自动更新，若数据源滞后将沿用上一日数值。</p>
+            <p>回撤指当前价格相对最近十年滚动最高价的跌幅。</p>
             <p>本工具仅供研究参考，不构成投资建议，请结合自身风险承受能力审慎决策。</p>
         </footer>
     </div>
@@ -437,7 +438,7 @@
                         <td class="px-4 py-4 text-right text-sm text-emerald-600 dark:text-emerald-200">${formatPercent(asset.dividendYield, 2)}</td>
                         <td class="px-4 py-4 text-right text-sm text-sky-600 dark:text-sky-200">${formatPercent(asset.roe, 2)}</td>
                         <td class="w-28 px-4 py-4 text-center">${drawdownChip(asset.drawdown)}</td>
-                        <td class="min-w-[11rem] px-4 py-4 text-right">${ratingPill(score)}</td>
+                        <td class="min-w-[9rem] px-3 py-4 text-right">${ratingPill(score)}</td>
                     </tr>
                 `;
             }).join('');
