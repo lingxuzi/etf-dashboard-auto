@@ -1,29 +1,26 @@
-# ETF 指数估值仪表盘（自动更新版）
+# ETF 估值与性价比仪表盘
 
-这是一个自动化维护的 ETF 指数估值仪表盘。GitHub Actions 每个交易日抓取估值与行情数据，生成 `docs/assets.csv`，通过 GitHub Pages 暴露 `docs/index.html`，让访问者直接看到最新的打分结果。
+面向逆向与估值驱动的 ETF 投资者，这个仪表盘把 A 股、港股、美股核心指数的估值区间、回撤、股息率等关键指标放在同一视图里，帮你快速判断“贵还是便宜”。
 
-## 项目速览
+> **在线体验**：https://bryanzhang1024.github.io/etf-dashboard-auto/
+>
+> **数据刷新**：每个交易日北京时间 18:30 左右自动更新（GitHub Actions）
 
-- 在线仪表盘（启用 GitHub Pages 后）：`https://<your-account>.github.io/etf_dashboard/`
-- 更新频率：工作日北京时间 18:30 左右完成一次全量刷新
-- 覆盖对象：A 股中证系列、恒生系列、美股核心指数及对应 ETF 代理
+## 这个仪表盘能帮你
 
-## 功能亮点
+- 一眼看到 20 个核心指数的 Value（PE/PB 百分位）与 Pain（近十年回撤）得分，找出真正低估的板块。
+- 展示当前股息率、ROE、估值区间标签，辅助在“便宜但陷阱”和“便宜有支撑”之间做决策。
+- 保留 ETF 代理列表，点开即知道可以交易的对标产品。
 
-- 自动数据管线：`config/indices.yaml` 描述 25 个指数的行情与估值来源，`scripts/` 目录按顺序抓取并计算分位。
-- 多市场覆盖：AKShare（中证估值）、恒指官网 Factsheet、Yahoo Finance 共同提供 A 股 / 港股 / 美股数据。
-- 评分模型透明：PE、PB、股息率百分位 + 近十年最大回撤，一目了然衡量“贵或便宜”。
-- 弹性降权：某些指标缺失时自动降权并归一，保证仪表盘始终可用。
+## 如何使用
 
-## 快速上手
+### 在线直接查看
 
-### 在线查看
+1. 打开上方在线地址，默认展示最新一次数据快照。
+2. 如遇缓存，可使用 `Shift + F5` 刷新确保看到最新分数。
+3. 点击单个指数卡片可展开指标明细。
 
-1. 在仓库 Settings → Pages 启用 `main` 分支 `/docs` 目录。
-2. 等待 Actions 生成最新 `docs/assets.csv`（首次部署可手动触发一次工作流）。
-3. 访问 Pages 链接即可看到仪表盘，浏览器缓存可用 `Shift + F5` 强刷。
-
-### 本地运行
+### 本地探索或自行部署
 
 ```bash
 pip install -r requirements.txt
@@ -33,44 +30,28 @@ python scripts/fetch_hk_hsi.py
 python scripts/fetch_us_yf.py
 python scripts/compute_metrics.py
 python scripts/build_assets.py
+python -m http.server 8000 --directory docs  # 可选：本地预览
 ```
 
-运行完成后，`docs/assets.csv` 会被刷新，随即可在本地或 Pages 上查看。
+运行完成后，最新结果会写入 `docs/assets.csv`，本地访问 `http://localhost:8000` 即可复现线上页面。
 
-### 本地预览
+> 抓数脚本依赖外网访问；如在 CI 或内网环境执行，请确保出口能够访问中证指数、恒指官网及 Yahoo Finance。
 
-```bash
-python -m http.server 8000 --directory docs
-```
+## 数据来源与更新频率
 
-打开浏览器访问 `http://localhost:8000`，即可模拟线上效果。
+- **中证系指数**：通过 AKShare 请求中证官网估值与行情接口，持有 15 年历史；如接口返回 403，可将配置中的 `pe_source/pb_source/dp_source` 暂设为 `none`，模型会自动降权。
+- **恒生系列**：定期抓取恒指官网 Factsheet PDF 中的 PE/PB/Dividend Yield，再用 Yahoo Finance 提供的行情补齐时间序列。
+- **美股及其他海外指数**：利用 Yahoo Finance 指数行情 + ETF 代理股息率（SPY、QQQ、XLV 等）计算分位。
+- **缺失兜底**：估值缺失时不会中断任务，会记录日志到 `data/raw/*` 并按降权策略保证评分仍可用。
 
-> 抓数脚本需要外网访问权限；如在 CI 或内网环境执行，请确保出口可访问相应数据源。
+## 自动更新如何运作（维护者参考）
 
-## 数据口径与限制
-
-- **中证系指数**：AKShare 调用中证官网估值接口；若站点返回 403，可在配置里暂时将 `pe_source/pb_source/dp_source` 设为 `none`，脚本会自动降权。
-- **恒生系列**：通过恒指官网 Factsheet PDF 抽取 PE/PB/Dividend Yield，补充 Yahoo Finance 行情；月度资料若暂未发布，会沿用上一次值。
-- **美股指数**：使用 Yahoo Finance 指数行情，ETF 代理（如 SPY、QQQ、XLV）提供股息率序列。
-- **缺失处理**：脚本会记录日志到 `data/raw/*`，必要时可手动补数据或新增 `indicator_symbol`。
-
-## 自动化与部署
-
-### GitHub Actions：`Update ETF dashboard data`
-
-- 触发：工作日 UTC 10:30（北京时间 18:30）+ `workflow_dispatch`
-- 步骤：Checkout → 安装依赖 → 执行抓数脚本 → 生成 `docs/assets.csv` → 提交更新
-- 验证：在 Actions 页面手动触发一次，确认日志无误并检查 `docs/assets.csv` 时间戳。
-
-### GitHub Pages
-
-1. 打开 Settings → Pages → `Build and deployment`
-2. 选择 `Deploy from a branch`
-3. Branch 选 `main`，目录选 `/docs`
-4. 保存后等待几分钟，页面即可对外提供 `docs/index.html`
+- 工作流：`.github/workflows/update.yml` 中的 `Update ETF dashboard data` 在工作日 UTC 10:30 自动触发，可手动 `workflow_dispatch`。
+- 步骤：Checkout → 安装依赖 → 抓取估值 `fetch_djeva.py` → 抓行情 → 计算指标 → 生成 `docs/assets.csv` → 自动提交。
+- 部署：GitHub Pages 指向 `main` 分支 `/docs` 目录，即可对外提供 `docs/index.html` 静态页面。
 
 ## 常见问题
 
-- **工作流失败怎么办？** 打开 Actions 日志，通常是网络超时或数据源变动；根据提示修正配置或重试。
-- **指数想要扩充？** 在 `config/indices.yaml` 新增条目并指定行情/估值来源，重跑脚本或等定时任务即可。
-- **本地运行缺乏网络？** 先在外网机器运行脚本生成 `data/` 与 `docs/assets.csv`，再同步到目标环境读取。
+- **日志里有“缺少估值数据”怎么办？** 先确认 `fetch_djeva.py` 是否成功执行，再检查网络或配置中的 `djeva_code`。
+- **想新增或替换指数？** 在 `config/indices.yaml` 补充条目并指定行情/估值源，重跑脚本或等待自动任务即可上线。
+- **为什么在线页面和本地结果不同？** 在线版本依赖 Pages 缓存，刷新或等待工作流执行完毕即可同步。
